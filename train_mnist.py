@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from convex_modules import *
-from trainer import Trainer, signal_propagation
+from trainer import Trainer, signal_propagation, make_deterministic
 
 
 def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init: str = "he"):
@@ -42,12 +42,6 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
         return nn.Sequential(nn.Flatten(), layer1, *layers)
     else:
         raise ValueError(f"unknown model name: '{name}'")
-
-
-def make_deterministic(seed: int):
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
-    torch.use_deterministic_algorithms(True)
-    torch.manual_seed(seed)
 
 
 if __name__ == "__main__":

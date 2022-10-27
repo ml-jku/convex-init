@@ -1,3 +1,5 @@
+import os
+
 import torch
 from torch import nn, optim
 from torch.utils.tensorboard import SummaryWriter
@@ -123,6 +125,12 @@ def signal_propagation(model, inputs):
         )
 
     return means, varis
+
+
+def make_deterministic(seed: int):
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    torch.use_deterministic_algorithms(True)
+    torch.manual_seed(seed)
 
 
 class Trainer:
