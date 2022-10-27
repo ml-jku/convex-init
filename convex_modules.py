@@ -1,16 +1,26 @@
 import copy
+from abc import ABC, abstractmethod
 
 import torch
 from torch import nn
 
 __all__ = [
-    "ExponentialPositivity", "ClippedPositivity",
+    "Positivity", "ExponentialPositivity", "ClippedPositivity",
     "ConvexLinear", "ConvexConv2d",
     "LinearSkip", "Conv2dSkip",
 ]
 
 
-class ExponentialPositivity:
+class Positivity(ABC):
+
+    @abstractmethod
+    def __call__(self, weight: torch.Tensor) -> torch.Tensor: ...
+
+    @abstractmethod
+    def init_raw_(self, weight: nn.Parameter, bias: nn.Parameter): ...
+
+
+class ExponentialPositivity(Positivity):
 
     def __call__(self, weight):
         return torch.exp(weight)
@@ -30,7 +40,7 @@ class ExponentialPositivity:
         nn.init.constant_(bias, -shift)
 
 
-class ClippedPositivity:
+class ClippedPositivity(Positivity):
 
     def __call__(self, weight):
         return torch.relu(weight)
