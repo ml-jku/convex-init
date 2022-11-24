@@ -117,6 +117,71 @@ class ConvexConv2d(nn.Conv2d):
         self.positivity.init_raw_(self.weight, self.bias)
 
 
+class ConvexLayerNorm(nn.LayerNorm):
+    """LayerNorm with positive weights and tracked statistics."""
+
+    def __init__(self, normalized_shape, positivity: Positivity = None,
+                 eps=1e-5, affine=True, device=None, dtype=None,
+                 momentum: float = 0.1, track_running_stats: bool = True):
+        if positivity is None:
+            raise TypeError("positivity must be given for convex layer")
+
+        self.track_running_stats = False
+        self.momentum = momentum
+        super().__init__(normalized_shape, eps, affine, device, dtype)
+
+        self.positivity = positivity
+        self.track_running_stats = track_running_stats
+        if self.track_running_stats:
+            self.register_buffer("running_mean", torch.zeros(normalized_shape))
+            self.register_buffer("running_var", torch.ones(normalized_shape))
+            self.num_batches_tracked = 0
+        else:
+            self.register_buffer("running_mean", None)
+            self.register_buffer("running_var", None)
+            self.num_batches_tracked = None
+
+        self.reset_running_stats()
+
+    def reset_running_stats(self):
+        if self.track_running_stats:
+            nn.init.zeros_(self.running_mean)
+            nn.init.ones_(self.running_var)
+            self.num_batches_tracked = 0
+
+    def reset_parameters(self):
+        self.reset_running_stats()
+        nn.init.zeros_(self.weight)
+        nn.init.zeros_(self.bias)
+
+    def forward(self, x):
+        pos_weight = self.positivity(self.weight)
+        if not self.track_running_stats:
+            return nn.functional.layer_norm(
+                x, self.normalized_shape, pos_weight, self.bias, self.eps
+            )
+
+        if self.training:
+            dims = tuple(range(-len(self.normalized_shape), 0))
+            mean = x.mean(dims, keepdim=True)
+            var = x.var(dims, unbiased=False, keepdim=True)
+            if self.training:
+                self.num_batches_tracked += 1
+                self.running_mean = (
+                        (1 - self.momentum) * self.running_mean
+                        + self.momentum * torch.mean(mean)
+                )
+                self.running_var = (
+                    (1 - self.momentum) * self.running_var
+                    + self.momentum * torch.mean(var)
+                )
+        else:
+            mean, var = self.running_mean, self.running_var
+
+        x_norm = (x - mean) / (var + self.eps) ** .5
+        return pos_weight * x_norm + self.bias
+
+
 class LinearSkip(nn.Module):
 
     def __init__(self, in_features: int, out_features: int, residual: nn.Module):
