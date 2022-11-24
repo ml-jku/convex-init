@@ -21,6 +21,10 @@ class Positivity(ABC):
 
 
 class ExponentialPositivity(Positivity):
+    """
+    Make weights positive by using exponential function.
+    Initialisation should be perfect for fully-connected convex layers.
+    """
 
     def __call__(self, weight):
         return torch.exp(weight)
@@ -29,18 +33,23 @@ class ExponentialPositivity(Positivity):
         import math
         fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
         pi = math.pi
-        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6)
+        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5
         mean = math.log(6 * pi) - math.log(
-            fan_in * (4 * pi - 3 * 3 ** .5 + tmp) * (10 * pi - 3 * 3 ** .5 + tmp)
+            fan_in * (4 * pi + tmp) * (10 * pi + tmp)
         ) / 2
-        var = math.log(10 - 3 * 3 ** .5 + tmp) - math.log(6 * pi)
-        shift = (3 * fan_in / (4 * pi - 3 * 3 ** .5 + tmp)) ** .5
+        var = math.log(10 + tmp) - math.log(6 * pi)
 
         nn.init.normal_(weight, mean, var ** .5)
-        nn.init.constant_(bias, -shift)
+        if bias is not None:
+            shift = (3 * fan_in / (4 * pi + tmp)) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
+            nn.init.constant_(bias, -shift)
 
 
 class ClippedPositivity(Positivity):
+    """
+    Make weights positive by using clipping.
+    Initialisation stems from naive derivation and does not work that well.
+    """
 
     def __call__(self, weight):
         return torch.relu(weight)
@@ -56,11 +65,27 @@ class ClippedPositivity(Positivity):
             bias -= (3 * fan_in / (8 * torch.pi - 3)) ** .5
 
 
+class NegExpPositivity(Positivity):
+    """
+    Make weights positive by calling the exponential function on the negative part.
+    Initialisation is arbitrary, but this does not work and has not been tested extensively.
+    """
+
+    def __call__(self, weight):
+        return torch.where(weight < 0, weight.exp(), weight)
+
+    def init_raw_(self, weight, bias):
+        nn.init.kaiming_normal_(weight)
+        if bias is not None:
+            nn.init.zeros_(bias)
+
+
 class ConvexLinear(nn.Linear):
+    """Linear layer with positive weights."""
 
     def __init__(self, *args, positivity=None, **kwargs):
         if positivity is None:
-            raise TypeError("positivity must be given for convex layer")
+            raise TypeError("positivity must be given as kwarg for convex layer")
 
         self.positivity = positivity
         super().__init__(*args, **kwargs)
@@ -73,6 +98,7 @@ class ConvexLinear(nn.Linear):
 
 
 class ConvexConv2d(nn.Conv2d):
+    """Convolutional layer with positive weights."""
 
     def __init__(self, *args, positivity=None, **kwargs):
         if positivity is None:
