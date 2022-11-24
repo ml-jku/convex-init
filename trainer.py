@@ -192,7 +192,8 @@ class Trainer:
         for batch in batches:
             logits, y = self._forward(batch)
             err = self.objective(logits, y)
-            self.logger.add_scalar("train/batch_loss", avg_loss(err, len(y)), self.num_updates)
+            if self.logger is not None:
+                self.logger.add_scalar("train/batch_loss", avg_loss(err, len(y)), self.num_updates)
 
             self.optimiser.zero_grad()
             err.backward()
@@ -203,22 +204,28 @@ class Trainer:
         return avg_loss.value
 
     def train(self, train_loader, valid_loader, num_epochs: int = 1):
+        extra_metrics = {}
+        if isinstance(self.objective, nn.CrossEntropyLoss):
+            extra_metrics["acc"] = Accuracy()
+
         # baseline
         out = self.evaluate(train_loader)
-        self.logger.add_scalar("train/avg_loss", out["loss"].value, self.num_epochs)
-        metrics = self.evaluate(valid_loader, {"acc": Accuracy()})
-        for k, m in metrics.items():
-            self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
+        metrics = self.evaluate(valid_loader, extra_metrics)
+        if self.logger is not None:
+            self.logger.add_scalar("train/avg_loss", out["loss"].value, self.num_epochs)
+            for k, m in metrics.items():
+                self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
         print(f"epoch {0:02d}",
               ", ".join(f"{k}: {v}" for k, v in metrics.items()),
               f"(avg train loss: {out['loss'].value:.5e})")
 
         for epoch in range(1, num_epochs + 1):
             train_loss = self.update(train_loader)
-            self.logger.add_scalar("train/avg_loss", train_loss, self.num_epochs)
-            metrics = self.evaluate(valid_loader, {"acc": Accuracy()})
-            for k, m in metrics.items():
-                self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
+            metrics = self.evaluate(valid_loader, extra_metrics)
+            if self.logger is not None:
+                self.logger.add_scalar("train/avg_loss", train_loss, self.num_epochs)
+                for k, m in metrics.items():
+                    self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
             print(f"epoch {epoch:02d}",
                   ", ".join(f"{k}: {v}" for k, v in metrics.items()),
                   f"(avg train loss: {train_loss:.5e})")
