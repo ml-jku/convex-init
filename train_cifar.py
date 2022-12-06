@@ -57,11 +57,13 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
     elif name == "cnn":
         if len(layer_sizes) != 4:
             raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
-        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5)
+        # layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5)
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5, stride=2)
         nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
         nn.init.zeros_(layer1.bias)
         conv_layers = [nn.Sequential(
-            nn.MaxPool2d(2), nn.ReLU(), nn.Conv2d(n_in, n_out, 5)
+            # nn.MaxPool2d(2), nn.ReLU(), nn.Conv2d(n_in, n_out, 5)
+            nn.ReLU(), nn.Conv2d(n_in, n_out, 5, stride=2)
         ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
         for lay in conv_layers:
             nn.init.kaiming_normal_(lay[-1].weight)
@@ -80,16 +82,22 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
     elif name == "convex-cnn":
         if len(layer_sizes) != 4:
             raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
-        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5)
+        # layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5)
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5, stride=2)
         nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
         nn.init.zeros_(layer1.bias)
         conv_layers = [nn.Sequential(
-            nn.MaxPool2d(2), nn.ReLU(), ConvexConv2d(n_in, n_out, 5, positivity=pos_func)
+            # nn.MaxPool2d(2), nn.ReLU(), ConvexConv2d(n_in, n_out, 5, positivity=pos_func)
+            nn.ReLU(), ConvexConv2d(n_in, n_out, 5, stride=2, positivity=pos_func)
         ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
         for lay in conv_layers:
             if init == "he":
                 nn.init.kaiming_normal_(lay[-1].weight)
                 nn.init.zeros_(lay[-1].bias)
+            elif init == "hacked":
+                assert lay[-1].weight.shape == (128, 128, 5, 5)
+                nn.init.normal_(lay[-1].weight, -10.872, 1.05 * 2.615)
+                nn.init.constant_(lay[-1].bias, -0.740)
             else:
                 pos_func.init_raw_(lay[-1].weight, lay[-1].bias)
         fc_layers = [
