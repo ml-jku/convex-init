@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from convex_modules import *
-from convex_modules import BiConvex
+from convex_modules import BiConvex, ConvexLayerNorm
 from trainer import Trainer, signal_propagation, make_deterministic
 
 
@@ -114,6 +114,100 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             else:
                 pos_func.init_raw_(lay.weight, lay.bias)
         return nn.Sequential(layer1, *conv_layers, *fc_layers)
+    elif name == "convex-cnn2":
+        if len(layer_sizes) != 4:
+            raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
+        # layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5)
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5, stride=2)
+        nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
+        nn.init.zeros_(layer1.bias)
+        conv_layers = [nn.Sequential(
+            # nn.MaxPool2d(2), nn.ReLU(), ConvexConv2d(n_in, n_out, 5, positivity=pos_func)
+            nn.ELU(), ConvexConv2d(n_in, n_out, 5, stride=2, positivity=pos_func, bias=False),
+            nn.BatchNorm2d(n_out)
+        ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
+        for lay in conv_layers:
+            lay[-1].reset_parameters()
+            lay[-1].weight.requires_grad_(False)
+            if init == "he":
+                nn.init.kaiming_normal_(lay[-2].weight)
+            else:
+                pos_func.init_raw_(lay[-2].weight, lay[-2].bias)
+        fc_layers = [
+            nn.Flatten(),
+            nn.ELU(),
+            ConvexLinear(layer_sizes[-2], 300, positivity=pos_func),
+            nn.ELU(),
+            ConvexLinear(300, layer_sizes[-1], positivity=pos_func)
+        ]
+        for lay in fc_layers[2::2]:
+            if init == "he":
+                nn.init.kaiming_normal_(lay.weight)
+                nn.init.zeros_(lay.bias)
+            else:
+                pos_func.init_raw_(lay.weight, lay.bias)
+        return nn.Sequential(layer1, *conv_layers, *fc_layers)
+    elif name == "single-cnn":
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
+        nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
+        nn.init.zeros_(layer1.bias)
+        layer2 = nn.Sequential(
+            nn.Flatten(),
+            nn.ReLU(),
+            nn.Linear(layer_sizes[0] * 9 * 9, num_classes)
+        )
+        nn.init.kaiming_normal_(layer2[-1].weight)
+        nn.init.zeros_(layer2[-1].bias)
+        return nn.Sequential(layer1, layer2)
+    elif name == "convex-single-cnn":
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
+        nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
+        nn.init.zeros_(layer1.bias)
+        layer2 = nn.Sequential(
+            nn.Flatten(),
+            nn.ReLU(),
+            ConvexLinear(layer_sizes[0] * 9 * 9, num_classes, positivity=pos_func)
+        )
+        if init == "he":
+            nn.init.kaiming_normal_(layer2[-1].weight)
+            nn.init.zeros_(layer2[-1].bias)
+        else:
+            pos_func.init_raw_(layer2[-1].weight, layer2[-1].bias)
+        return nn.Sequential(layer1, layer2)
+    elif name == "single-cnn2":
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
+        nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
+        nn.init.zeros_(layer1.bias)
+        layer2 = nn.Sequential(
+            nn.Flatten(),
+            nn.ReLU(),
+            nn.Linear(layer_sizes[0] * 9 * 9, layer_sizes[1]),
+            nn.ReLU(),
+            nn.Linear(layer_sizes[1], num_classes)
+        )
+        nn.init.kaiming_normal_(layer2[-1].weight)
+        nn.init.zeros_(layer2[-1].bias)
+        return nn.Sequential(layer1, layer2)
+    elif name == "convex-single-cnn2":
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
+        nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
+        nn.init.zeros_(layer1.bias)
+        layer2 = nn.Sequential(
+            nn.Flatten(),
+            nn.ReLU(),
+            ConvexLinear(layer_sizes[0] * 9 * 9, layer_sizes[1], positivity=pos_func),
+            nn.ReLU(),
+            ConvexLinear(layer_sizes[1], num_classes, positivity=ExponentialPositivity())
+        )
+        if init == "he":
+            nn.init.kaiming_normal_(layer2[-3].weight)
+            nn.init.zeros_(layer2[-3].bias)
+            nn.init.kaiming_normal_(layer2[-1].weight)
+            nn.init.zeros_(layer2[-1].bias)
+        else:
+            pos_func.init_raw_(layer2[-3].weight, layer2[-3].bias)
+            pos_func.init_raw_(layer2[-1].weight, layer2[-1].bias)
+        return nn.Sequential(layer1, layer2)
     elif name == "biconvex-cnn":
         if len(layer_sizes) != 4:
             raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
