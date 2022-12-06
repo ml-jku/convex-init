@@ -148,14 +148,7 @@ class Trainer:
         self.num_updates = 0
 
     def log_hparams(self, config: Configuration, metrics: dict):
-        flat_config = config.to_dict()
-        for k, v in config.items():
-            if isinstance(v, Configuration):
-                sub = flat_config.pop(k)
-                for sub_k, sub_v in sub.items():
-                    flat_config[".".join([k, sub_k])] = sub_v
-
-        exp, ssi, sei = hparams(flat_config, metrics, None)
+        exp, ssi, sei = hparams(config.to_dict(flat=True), metrics, None)
         self.logger.file_writer.add_summary(exp)
         self.logger.file_writer.add_summary(ssi)
         self.logger.file_writer.add_summary(sei)
