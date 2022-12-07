@@ -257,7 +257,7 @@ if __name__ == "__main__":
     from torch.utils.tensorboard import SummaryWriter
 
     config = load_config("config")
-    hparams, sys_config = config.values()
+    hparams, sys_config = config.hparams, config.system
     log_dir = time.strftime("runs/cifar/%y%j-%H%M%S")
     make_deterministic(hparams.seed)
 
