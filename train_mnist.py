@@ -1,11 +1,11 @@
-import os
 import time
 
 import torch
 from torch import nn
 
 from convex_modules import *
-from trainer import Trainer, signal_propagation, make_deterministic
+from trainer import Trainer, signal_propagation
+from utils import make_deterministic
 
 
 def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init: str = "he"):

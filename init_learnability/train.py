@@ -10,37 +10,8 @@ from torchvision import datasets, transforms
 from upsilonconf import Configuration, load_config, save_config
 
 from convex_modules import *
-from trainer import make_deterministic, signal_propagation, Trainer
-
-
-def lecun_init_(w: torch.Tensor, b: torch.Tensor) -> None:
-    """
-    Initialise weights according to (Lecun et al., 1998).
-
-    Parameters
-    ----------
-    w : torch.Tensor
-        Weight matrix to initialise.
-    b : torch.Tensor
-        Bias vector to initialise.
-    """
-    nn.init.kaiming_normal_(w, nonlinearity="linear")
-    nn.init.zeros_(b)
-
-
-def he_init_(w: torch.Tensor, b: torch.Tensor) -> None:
-    """
-    Initialise weights according to (He et al., 2015).
-
-    Parameters
-    ----------
-    w : torch.Tensor
-        Weight matrix to initialise.
-    b : torch.Tensor
-        Bias vector to initialise.
-    """
-    nn.init.kaiming_normal_(w, nonlinearity="relu")
-    nn.init.zeros_(b)
+from trainer import signal_propagation, Trainer
+from utils import make_deterministic, lecun_init_, he_init_
 
 
 def get_layer(n_in: int, n_out: int,
@@ -220,7 +191,7 @@ if __name__ == "__main__":
     from upsilonconf import config_from_cli
 
     hparams = config_from_cli()
-    system_config = load_config("config/system.yaml")
+    system_config = load_config("config/system/local.yaml")
 
     rng = Random(hparams.seed)
     for seed in (rng.randint(1_000, 10_000) for _ in range(10)):
