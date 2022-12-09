@@ -204,9 +204,16 @@ class Trainer:
               ", ".join(f"{k}: {v}" for k, v in metrics.items()),
               f"(avg train loss: {out['loss'].value:.5e})")
 
+        best_metrics = {k: m.value for k, m in metrics.items()}
         for epoch in range(1, num_epochs + 1):
             train_loss = self.update(train_loader)
             metrics = self.evaluate(valid_loader, extra_metrics)
+            best_metrics = {
+                k: min(metrics[k].value, v) if k != "acc"
+                else max(metrics[k].value, v)
+                for k, v in best_metrics.items()
+            }
+
             if self.logger is not None:
                 self.logger.add_scalar("train/avg_loss", train_loss, self.num_epochs)
                 for k, m in metrics.items():
@@ -215,4 +222,4 @@ class Trainer:
                   ", ".join(f"{k}: {v}" for k, v in metrics.items()),
                   f"(avg train loss: {train_loss:.5e})")
 
-        return metrics
+        return best_metrics
