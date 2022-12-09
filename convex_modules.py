@@ -23,7 +23,7 @@ class Positivity(ABC):
 class ExponentialPositivity(Positivity):
     """
     Make weights positive by using exponential function.
-    Initialisation should be perfect for fully-connected convex layers.
+    Initialisation should be perfect for fully-connected convex layers (with ReLU).
     """
 
     def __call__(self, weight):
@@ -151,8 +151,13 @@ class ConvexLayerNorm(nn.LayerNorm):
 
     def reset_parameters(self):
         self.reset_running_stats()
-        nn.init.zeros_(self.weight)
         nn.init.zeros_(self.bias)
+        if isinstance(self.positivity, ExponentialPositivity):
+            nn.init.zeros_(self.weight)
+        elif isinstance(self.positivity, (NegExpPositivity, ClippedPositivity)):
+            nn.init.ones_(self.weight)
+        else:
+            raise ValueError("no init for positivity")
 
     def forward(self, x):
         pos_weight = self.positivity(self.weight)
