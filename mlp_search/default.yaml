@@ -1,0 +1,12 @@
+id: 0
+seed: 2023
+num_epochs: 25
+batch_size: 128
+data:
+  name: MNIST
+  pre_process: normal
+model:
+  hidden: []
+adam:
+  lr: 1e-3
+  weight_decay: 0.
