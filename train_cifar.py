@@ -5,6 +5,7 @@ from torch import nn
 
 from convex_modules import *
 from convex_modules import BiConvex, ConvexLayerNorm
+from empirical_init import EmpiricalInit
 from trainer import Trainer, signal_propagation
 from utils import make_deterministic
 
@@ -65,9 +66,6 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             # nn.MaxPool2d(2), nn.ReLU(), nn.Conv2d(n_in, n_out, 5)
             nn.ReLU(), nn.Conv2d(n_in, n_out, 5, stride=2)
         ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
-        for lay in conv_layers:
-            nn.init.kaiming_normal_(lay[-1].weight)
-            nn.init.zeros_(lay[-1].bias)
         fc_layers = [
             nn.Flatten(),
             nn.ReLU(),
@@ -75,10 +73,21 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             nn.ReLU(),
             nn.Linear(300, layer_sizes[-1])
         ]
+
+        model = nn.Sequential(layer1, *conv_layers, *fc_layers)
+        for lay in conv_layers:
+            nn.init.kaiming_normal_(lay[-1].weight)
+            nn.init.zeros_(lay[-1].bias)
         for lay in fc_layers[2::2]:
             nn.init.kaiming_normal_(lay.weight)
             nn.init.zeros_(lay.bias)
-        return nn.Sequential(layer1, *conv_layers, *fc_layers)
+
+        if init == "empiric":
+            lsuv = EmpiricalInit()
+            lsuv(model, torch.randn(1024, *in_shape))
+        elif init != "he":
+            raise ValueError(f"unknown init: {init}")
+        return model
     elif name == "convex-cnn":
         if len(layer_sizes) != 4:
             raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
@@ -90,6 +99,15 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             # nn.MaxPool2d(2), nn.ReLU(), ConvexConv2d(n_in, n_out, 5, positivity=pos_func)
             nn.ReLU(), ConvexConv2d(n_in, n_out, 5, stride=2, positivity=pos_func)
         ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
+        fc_layers = [
+            nn.Flatten(),
+            nn.ReLU(),
+            ConvexLinear(layer_sizes[-2], 300, positivity=pos_func),
+            nn.ReLU(),
+            ConvexLinear(300, layer_sizes[-1], positivity=pos_func)
+        ]
+
+        model = nn.Sequential(layer1, *conv_layers, *fc_layers)
         for lay in conv_layers:
             if init == "he":
                 nn.init.kaiming_normal_(lay[-1].weight)
@@ -98,22 +116,74 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
                 assert lay[-1].weight.shape == (128, 128, 5, 5)
                 nn.init.normal_(lay[-1].weight, -10.872, 1.05 * 2.615)
                 nn.init.constant_(lay[-1].bias, -0.740)
-            else:
+            elif init == "empiric":
+                pass
+            elif init is None or init == "default" or (
+                positivity == "exp" and init == "hoedt"
+            ):
                 pos_func.init_raw_(lay[-1].weight, lay[-1].bias)
-        fc_layers = [
-            nn.Flatten(),
-            nn.ReLU(),
-            ConvexLinear(layer_sizes[-2], 300, positivity=pos_func),
-            nn.ReLU(),
-            ConvexLinear(300, layer_sizes[-1], positivity=pos_func)
-        ]
+            else:
+                raise ValueError(f"unknown init: {init}")
         for lay in fc_layers[2::2]:
             if init == "he":
                 nn.init.kaiming_normal_(lay.weight)
                 nn.init.zeros_(lay.bias)
-            else:
+            elif init == "empiric":
+                pass
+            elif init is None or init == "default" or (
+                positivity == "exp" and init == "hoedt"
+            ):
                 pos_func.init_raw_(lay.weight, lay.bias)
-        return nn.Sequential(layer1, *conv_layers, *fc_layers)
+            else:
+                raise ValueError(f"unknown init: {init}")
+
+        if init == "empiric":
+            lsuv = EmpiricalInit()
+            lsuv(model, torch.randn(1024, *in_shape))
+        return model
+    elif name == "cnn2":
+        if len(layer_sizes) != 4:
+            raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
+        # layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5)
+        layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 5, stride=2)
+        nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
+        nn.init.zeros_(layer1.bias)
+        conv_layers = [nn.Sequential(
+            # nn.MaxPool2d(2), nn.ReLU(), ConvexConv2d(n_in, n_out, 5, positivity=pos_func)
+            nn.ELU(), nn.Conv2d(n_in, n_out, 5, stride=2, bias=False),
+            nn.BatchNorm2d(n_out)
+        ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
+        fc_layers = [
+            nn.Flatten(),
+            nn.ELU(),
+            nn.Linear(layer_sizes[-2], 300),
+            nn.ELU(),
+            nn.Linear(300, layer_sizes[-1])
+        ]
+
+        model = nn.Sequential(layer1, *conv_layers, *fc_layers)
+        for lay in conv_layers:
+            lay[-1].reset_parameters()
+            lay[-1].weight.requires_grad_(False)
+            if init == "he":
+                nn.init.kaiming_normal_(lay[-2].weight)
+            elif init == "empiric":
+                pass
+            else:
+                raise ValueError(f"unknown init: {init}")
+        for lay in fc_layers[2::2]:
+            if init == "he":
+                nn.init.kaiming_normal_(lay.weight)
+                nn.init.zeros_(lay.bias)
+            elif init == "empiric":
+                pass
+            else:
+                raise ValueError(f"unknown init: {init}")
+
+        if init == "empiric":
+            lsuv = EmpiricalInit()
+            lsuv(model, torch.randn(1024, *in_shape))
+        return model
     elif name == "convex-cnn2":
         if len(layer_sizes) != 4:
             raise ValueError(f"CNN must have three layers, but got {len(layer_sizes) - 1}")
@@ -126,13 +196,6 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             nn.ELU(), ConvexConv2d(n_in, n_out, 5, stride=2, positivity=pos_func, bias=False),
             nn.BatchNorm2d(n_out)
         ) for n_in, n_out in zip(layer_sizes[:-2], layer_sizes[1:-1])]
-        for lay in conv_layers:
-            lay[-1].reset_parameters()
-            lay[-1].weight.requires_grad_(False)
-            if init == "he":
-                nn.init.kaiming_normal_(lay[-2].weight)
-            else:
-                pos_func.init_raw_(lay[-2].weight, lay[-2].bias)
         fc_layers = [
             nn.Flatten(),
             nn.ELU(),
@@ -140,13 +203,38 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             nn.ELU(),
             ConvexLinear(300, layer_sizes[-1], positivity=pos_func)
         ]
+
+        model = nn.Sequential(layer1, *conv_layers, *fc_layers)
+        for lay in conv_layers:
+            lay[-1].reset_parameters()
+            lay[-1].weight.requires_grad_(False)
+            if init == "he":
+                nn.init.kaiming_normal_(lay[-2].weight)
+            elif init == "empiric":
+                pass
+            elif init is None or init == "default" or (
+                positivity == "exp" and init == "hoedt"
+            ):
+                pos_func.init_raw_(lay[-2].weight, lay[-2].bias)
+            else:
+                raise ValueError(f"unknown init: {init}")
         for lay in fc_layers[2::2]:
             if init == "he":
                 nn.init.kaiming_normal_(lay.weight)
                 nn.init.zeros_(lay.bias)
-            else:
+            elif init is None or init == "default" or (
+                positivity == "exp" and init == "hoedt"
+            ):
                 pos_func.init_raw_(lay.weight, lay.bias)
-        return nn.Sequential(layer1, *conv_layers, *fc_layers)
+            elif init == "empiric":
+                pass
+            else:
+                raise ValueError(f"unknown init: {init}")
+
+        if init == "empiric":
+            lsuv = EmpiricalInit()
+            lsuv(model, torch.randn(1024, *in_shape))
+        return model
     elif name == "single-cnn":
         layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
         nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
@@ -156,9 +244,17 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             nn.ReLU(),
             nn.Linear(layer_sizes[0] * 9 * 9, num_classes)
         )
-        nn.init.kaiming_normal_(layer2[-1].weight)
-        nn.init.zeros_(layer2[-1].bias)
-        return nn.Sequential(layer1, layer2)
+
+        model = nn.Sequential(layer1, layer2)
+        if init == "he":
+            nn.init.kaiming_normal_(layer2[-1].weight)
+            nn.init.zeros_(layer2[-1].bias)
+        elif init == "empiric":
+            lsuv = EmpiricalInit()
+            lsuv(model, torch.randn(1024, *in_shape))
+        else:
+            raise ValueError(f"unknown init: {init}")
+        return model
     elif name == "convex-single-cnn":
         layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
         nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
@@ -168,12 +264,21 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             nn.ReLU(),
             ConvexLinear(layer_sizes[0] * 9 * 9, num_classes, positivity=pos_func)
         )
+
+        model = nn.Sequential(layer1, layer2)
         if init == "he":
             nn.init.kaiming_normal_(layer2[-1].weight)
             nn.init.zeros_(layer2[-1].bias)
-        else:
+        elif init is None or init == "default" or (
+            positivity == "exp" and init == "hoedt"
+        ):
             pos_func.init_raw_(layer2[-1].weight, layer2[-1].bias)
-        return nn.Sequential(layer1, layer2)
+        elif init == "empiric":
+            lsuv = EmpiricalInit()
+            lsuv(model, torch.randn(1024, *in_shape))
+        else:
+            raise ValueError(f"unknown init: {init}")
+        return model
     elif name == "single-cnn2":
         layer1 = nn.Conv2d(in_shape[0], layer_sizes[0], 16, stride=2)
         nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")

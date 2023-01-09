@@ -67,8 +67,13 @@ class EmpiricalInit:
         x = module(x)
 
         module.weight += (math.log(self.target_var) - torch.log(x.var())) / 2.
-        module.bias += self.target_mean - x.mean()
-        module.bias *= (self.target_var / x.var()) ** .5
+        if module.bias is not None:
+            module.bias += self.target_mean - x.mean()
+            module.bias *= (self.target_var / x.var()) ** .5
+        else:
+            # assume next layer does normalisation
+            return x * self.target_var / x.std()
+
         return (x - x.mean()) * self.target_std / x.std() + self.target_mean
 
 
