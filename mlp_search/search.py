@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets
 from torchvision.transforms import transforms
 from upsilonconf import save_config
+from tensorboard.backend.event_processing import event_accumulator
 
 from pre_processing import Whiten
 from trainer import Trainer
@@ -105,8 +106,19 @@ def get_model(img_shape: torch.Size, num_classes: int,
 
 def run(hparams, sys_config):
     result_path = Path("results")
-    if any(p.is_dir() for p in result_path.glob(f"{hparams.id}_*")):
-        raise RuntimeError(f"results already available for {hparams.id}")
+    for p in result_path.glob(f"{hparams.id}_*"):
+        if p.is_dir():
+            try:
+                event_path = next(p.glob(f"events.out.tfevents.*"))
+                ea = event_accumulator.EventAccumulator(str(event_path))
+                events = ea.Reload().Scalars("valid/acc")
+                print(f"found existing results for {hparams.id}")
+                return max(e.value for e in events)
+            except KeyError:
+                for file in p.iterdir():
+                    file.unlink()
+
+                p.rmdir()
 
     log_dir = result_path / time.strftime(f"{hparams.id}_%y%j-%H%M%S")
     make_deterministic(hparams.seed)
