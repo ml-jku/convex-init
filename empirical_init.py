@@ -1,10 +1,8 @@
-import math
-
 import torch
 from matplotlib import pyplot as plt
 from torch import nn
 
-from convex_modules import ConvexConv2d, ExponentialPositivity, ConvexLinear
+from convex_modules import ConvexConv2d, ExponentialPositivity, ConvexLinear, LazyClippedPositivity
 
 
 class EmpiricalInit:
@@ -29,9 +27,14 @@ class EmpiricalInit:
 
             return x
         elif isinstance(module, (ConvexLinear, ConvexConv2d)):
-            nn.init.kaiming_normal_(module.weight)
-            nn.init.zeros_(module.bias)
-            return self.fix_prop_convex(module, x)
+            if isinstance(module.positivity, ExponentialPositivity):
+                # nn.init.kaiming_normal_(module.weight)
+                # nn.init.zeros_(module.bias)
+                return self.fix_prop_convex_exp(module, x)
+            elif isinstance(module.positivity, LazyClippedPositivity):
+                return self.fix_prop_convex_lazy_clip(module, x)
+            else:
+                raise ValueError(f"no convex init for {module.positivity.__class__}")
         elif isinstance(module, (nn.Linear, nn.Conv2d)):
             return self.fix_prop_linear(module, x)
         elif isinstance(module, (nn.LayerNorm, nn.BatchNorm2d)):
@@ -65,23 +68,40 @@ class EmpiricalInit:
         return module(x)
 
     @torch.no_grad()
-    def fix_prop_convex(self, module: nn.Module, x: torch.Tensor):
+    def fix_prop_convex_exp(self, module: nn.Module, x: torch.Tensor):
         incoming = tuple(range(1, module.weight.ndim))
         module.weight -= module.weight.mean(dim=incoming, keepdim=True)
 
         x = module(x)
 
-        x_mean = torch.mean(x, dim=(0, *range(2, x.ndim)), keepdim=True)
         x_var = torch.var(x, dim=(0, *range(2, x.ndim)), keepdim=True)
         scale = (self.target_var / x_var) ** .5
         module.weight += torch.log(scale.view(-1, *(1 for _ in incoming)))
-        if module.bias is not None:
-            module.bias += self.target_mean - x_mean.squeeze()
-            module.bias *= scale.squeeze()
-        else:
+        if module.bias is None:
             # assume next layer does normalisation
             return x * scale
 
+        x_mean = torch.mean(x, dim=(0, *range(2, x.ndim)), keepdim=True)
+        module.bias += self.target_mean - x_mean.squeeze()
+        module.bias *= scale.squeeze()
+        return (x - x_mean) * scale + self.target_mean
+
+    @torch.no_grad()
+    def fix_prop_convex_lazy_clip(self, module: nn.Module, x: torch.Tensor):
+        incoming = tuple(range(1, module.weight.ndim))
+
+        x = module(x)
+
+        x_var = torch.var(x, dim=(0, *range(2, x.ndim)), keepdim=True)
+        scale = (self.target_var / x_var) ** .5
+        module.weight *= scale.view(-1, *(1 for _ in incoming))
+        if module.bias is None:
+            # assume next layer does normalisation
+            return x * scale
+
+        x_mean = torch.mean(x, dim=(0, *range(2, x.ndim)), keepdim=True)
+        module.bias += self.target_mean - x_mean.squeeze()
+        module.bias *= scale.squeeze()
         return (x - x_mean) * scale + self.target_mean
 
 
@@ -98,13 +118,10 @@ def _test_empirical_init(model, inputs, axes=None):
         )
     print("-" * 30)
 
+    lsuv_init(model, inputs)
     if axes is not None:
         for ax, layer in zip(axes, model):
             with torch.no_grad():
-                noise = lsuv_init(layer, inputs)
-                noise_means, noise_vars = noise.mean(dim=0), noise.var(dim=0)
-                print(f"{noise_means.mean().item(): .3f}+-{noise_means.std().item():5.3f}",
-                      f"{noise_vars.mean().item(): .3f}+-{noise_vars.std().item():5.3f}")
                 inputs = out = layer(inputs)
                 out_means, out_vars = out.mean(dim=0), out.var(dim=0)
                 out_mom2 = torch.mean(out ** 2, dim=0)

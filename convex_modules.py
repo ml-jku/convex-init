@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 __all__ = [
-    "Positivity", "ExponentialPositivity", "ClippedPositivity",
+    "Positivity", "ExponentialPositivity", "ClippedPositivity", "LazyClippedPositivity",
     "ConvexLinear", "ConvexConv2d",
     "LinearSkip", "Conv2dSkip",
 ]
