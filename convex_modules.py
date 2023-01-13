@@ -45,6 +45,27 @@ class ExponentialPositivity(Positivity):
             nn.init.constant_(bias, -shift)
 
 
+class LazyClippedPositivity(Positivity):
+
+    def __call__(self, weight):
+        with torch.no_grad():
+            weight.clamp_(0)
+
+        return weight
+
+    def init_raw_(self, weight, bias):
+        import math
+        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
+        const = (3 * 3 ** .5 - 4 * math.pi)
+        denom = (fan_in - 1) * const + 6 * fan_in * (math.pi - 1)
+        mean = (6 * math.pi / (fan_in * denom)) ** .5
+        var = 1 / fan_in
+        nn.init.normal_(weight, mean, var ** .5)
+        if bias is not None:
+            shift = (3 * fan_in / denom) ** .5
+            nn.init.constant_(bias, -shift)
+
+
 class ClippedPositivity(Positivity):
     """
     Make weights positive by using clipping.
