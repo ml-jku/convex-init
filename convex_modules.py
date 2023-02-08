@@ -37,7 +37,7 @@ class ExponentialPositivity(Positivity):
         mean = math.log(6 * pi) - math.log(
             fan_in * (4 * pi + tmp) * (10 * pi + tmp)
         ) / 2
-        var = math.log(10 + tmp) - math.log(6 * pi)
+        var = math.log(10 * pi + tmp) - math.log(6 * pi)
 
         nn.init.normal_(weight, mean, var ** .5)
         if bias is not None:
@@ -46,6 +46,10 @@ class ExponentialPositivity(Positivity):
 
 
 class LazyClippedPositivity(Positivity):
+    """
+    Make weights positive by using clipping after each update.
+    Initialisation should work well for fully-connected networks in theory.
+    """
 
     def __call__(self, weight):
         with torch.no_grad():
@@ -54,16 +58,21 @@ class LazyClippedPositivity(Positivity):
         return weight
 
     def init_raw_(self, weight, bias):
-        import math
-        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
-        const = (3 * 3 ** .5 - 4 * math.pi)
-        denom = (fan_in - 1) * const + 6 * fan_in * (math.pi - 1)
-        mean = (6 * math.pi / (fan_in * denom)) ** .5
-        var = 1 / fan_in
-        nn.init.normal_(weight, mean, var ** .5)
+        # import math
+        # fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
+        # const = (3 * 3. ** .5 - 4 * math.pi)
+        # denom = (fan_in - 1) * const + 6 * fan_in * (math.pi - 1)
+        # mean = (6 * math.pi / (fan_in * denom)) ** .5
+        # var = 1 / fan_in
+        # nn.init.normal_(weight, mean, var ** .5)
+        # if bias is not None:
+        #     shift = (3 * fan_in / denom) ** .5
+        #     nn.init.constant_(bias, -shift)
+        nn.init.trunc_normal_(weight, std=0.002)
+        with torch.no_grad():
+            weight.abs_()
         if bias is not None:
-            shift = (3 * fan_in / denom) ** .5
-            nn.init.constant_(bias, -shift)
+            nn.init.zeros_(bias)
 
 
 class ClippedPositivity(Positivity):

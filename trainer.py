@@ -1,7 +1,11 @@
+from pathlib import Path
+
 import torch
+from sklearn import metrics
 from torch import nn, optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
+from tqdm import tqdm
 from upsilonconf import Configuration
 
 
@@ -31,6 +35,37 @@ class Accuracy:
     def reset(self):
         self.correct = 0
         self.count = 0
+        return self
+
+
+class AreaUnderROCCurve:
+
+    def __init__(self, task: int = None):
+        self.task = task
+        self.pairs = []
+        self._cache = None
+
+    def __str__(self):
+        return f"{100 * self.value:05.2f}% (on {len(self.pairs)} samples)"
+
+    def __call__(self, logits, y):
+        if self.task is not None:
+            logits, y = logits[..., self.task], y[..., self.task]
+
+        mask = (y == 0) | (y == 1)
+        logits = torch.masked_select(logits, mask)
+        y = torch.masked_select(y, mask)
+        self.pairs.extend(zip(logits.tolist(), y.tolist()))
+        self._cache = None
+
+    @property
+    def value(self) -> float:
+        y_score, y_true = zip(*self.pairs)
+        return metrics.roc_auc_score(y_true, y_score)
+
+    def reset(self):
+        self.pairs = []
+        self._cache = None
         return self
 
 
@@ -112,8 +147,28 @@ def signal_propagation(model, inputs):
     mean = torch.mean(inputs.mean(0) ** 2).item()
     vari = torch.mean(inputs.var(0)).item()
     means, varis = [(mean, )], [(vari, )]
+    _flat = inputs.view(len(inputs), -1)
+    cov_diag = torch.mean(_flat ** 2, dim=0).mean()
+    cov_rest = sum(
+        torch.mean(_flat * _flat.roll(i, dims=-1), dim=0)[i:].sum()
+        for i in range(1, _flat.shape[-1])
+    ) * 2 / (_flat.shape[-1] * (_flat.shape[-1] - 1))
+    print(cov_diag.item(), cov_rest.item())
+
     for layer in _iterate_layers(model):
         x = layer(*x)
+
+        for xi in x:
+            _flat = xi.view(len(xi), -1)
+            cov_diag = torch.mean(_flat ** 2, dim=0).mean()
+            cov_diag1 = torch.sum(_flat[1:] * _flat.roll(1, dims=-1)[1:], dim=0).mean() / len(xi)
+            cov_diag2 = torch.sum(_flat[2:] * _flat.roll(2, dims=-1)[2:], dim=0).mean() / len(xi)
+            cov_diag3 = torch.sum(_flat[3:] * _flat.roll(3, dims=-1)[3:], dim=0).mean() / len(xi)
+            cov_diag4 = torch.sum(_flat[4:] * _flat.roll(4, dims=-1)[4:], dim=0).mean() / len(xi)
+            cov_diag5 = torch.sum(_flat[5:] * _flat.roll(5, dims=-1)[5:], dim=0).mean() / len(xi)
+            cov_diag6 = torch.sum(_flat[6:] * _flat.roll(6, dims=-1)[6:], dim=0).mean() / len(xi)
+            print(cov_diag.item(), cov_diag1.item(), cov_diag2.item(),
+                  cov_diag3.item(), cov_diag4.item(), cov_diag5.item(), cov_diag6.item())
 
         means.append(
             tuple(torch.mean(xi.mean(0) ** 2).item() for xi in x)
@@ -131,8 +186,9 @@ class Trainer:
         self, model: nn.Module, objective: nn.Module, optimiser: optim.Optimizer,
             tb_writer: SummaryWriter = None
     ):
-        self.model = model
-        self.objective = objective
+        device = next(model.parameters()).device
+        self.model = model.to(device)
+        self.objective = objective.to(device)
         self.optimiser = optimiser
 
         self.logger = tb_writer
@@ -160,7 +216,7 @@ class Trainer:
 
         metrics = {k: m.reset() for k, m in metrics.items()}
         avg_loss = Average()
-        for batch in batches:
+        for batch in tqdm(batches, total=len(batches), desc="evaluating"):
             logits, y = self._forward(batch)
             err = self.objective(logits, y)
             avg_loss(err, len(y))
@@ -174,7 +230,7 @@ class Trainer:
         self.objective.train()
 
         avg_loss = Average()
-        for batch in batches:
+        for batch in tqdm(batches, total=len(batches), desc="updating"):
             logits, y = self._forward(batch)
             err = self.objective(logits, y)
             if self.logger is not None:
@@ -192,6 +248,12 @@ class Trainer:
         extra_metrics = {}
         if isinstance(self.objective, nn.CrossEntropyLoss):
             extra_metrics["acc"] = Accuracy()
+        elif isinstance(self.objective, nn.BCEWithLogitsLoss):
+            _, y = next(iter(valid_loader))
+            assert y.ndim > 1
+            extra_metrics.update({
+                f"auc{i}": AreaUnderROCCurve(i) for i in range(y.shape[-1])
+            })
 
         # baseline
         out = self.evaluate(train_loader)
@@ -203,6 +265,11 @@ class Trainer:
         print(f"epoch {0:02d}",
               ", ".join(f"{k}: {v}" for k, v in metrics.items()),
               f"(avg train loss: {out['loss'].value:.5e})")
+        auc_values = [v.value for k, v in metrics.items() if k.startswith('auc')]
+        if len(auc_values) > 1:
+            avg_auc = 100 * sum(auc_values) / len(auc_values)
+            self.logger.add_scalar(f"valid/avg_auc", avg_auc, self.num_epochs)
+            print(f"avg AUC: {avg_auc:05.2f}%")
 
         best_metrics = {k: m.value for k, m in metrics.items()}
         for epoch in range(1, num_epochs + 1):
@@ -215,11 +282,22 @@ class Trainer:
             }
 
             if self.logger is not None:
+                torch.save({
+                    "model": self.model.state_dict(),
+                    "optim": self.optimiser.state_dict(),
+                    "epoch": self.num_epochs,
+                }, Path(self.logger.log_dir) / "checkpoint.pt")
+
                 self.logger.add_scalar("train/avg_loss", train_loss, self.num_epochs)
                 for k, m in metrics.items():
                     self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
             print(f"epoch {epoch:02d}",
                   ", ".join(f"{k}: {v}" for k, v in metrics.items()),
                   f"(avg train loss: {train_loss:.5e})")
+            auc_values = [v.value for k, v in metrics.items() if k.startswith('auc')]
+            if len(auc_values) > 1:
+                avg_auc = 100 * sum(auc_values) / len(auc_values)
+                self.logger.add_scalar(f"valid/avg_auc", avg_auc, self.num_epochs)
+                print(f"avg AUC: {avg_auc:05.2f}%")
 
         return best_metrics
