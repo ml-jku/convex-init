@@ -1,0 +1,11 @@
+seed: 2023
+num_epochs: 10
+batch_size: 64
+data:
+  name: MNIST
+model:
+  num_hidden: 5
+  positivity:
+  better_init: true
+adam:
+  lr: 1e-3

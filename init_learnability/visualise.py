@@ -49,6 +49,8 @@ def visualise_results(data: dict[tuple[str, int, str, bool], np.ndarray],
         ("clip", True): ("clip init", "white"),
         ("exp", False): ("exp raw", plt.cm.Paired(2)),
         ("exp", True): ("exp init", plt.cm.Paired(3)),
+        ("icnn", False): ("icnn raw", plt.cm.Paired(4)),
+        ("icnn", True): ("icnn init", plt.cm.Paired(5)),
     }
 
     for k, v in data.items():

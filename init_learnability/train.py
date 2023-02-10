@@ -2,6 +2,8 @@
 Experiment to test learnability of input-convex net as function of depth.
 """
 import time
+from pathlib import Path
+
 import torch
 from torch import nn
 from torch.utils.data import random_split, DataLoader
@@ -39,7 +41,8 @@ def get_layer(n_in: int, n_out: int,
     """
     if positivity is None:
         layer = nn.Linear(n_in, n_out)
-        he_init_(layer.weight, layer.bias)
+        if better_init:
+            he_init_(layer.weight, layer.bias)
         return layer
 
     _init = positivity.init_raw_ if better_init else he_init_
@@ -89,6 +92,8 @@ def get_model(img_shape: torch.Size, num_classes: int,
         positivity = ExponentialPositivity()
     elif positivity == "clip":
         positivity = ClippedPositivity()
+    elif positivity == "icnn":
+        positivity = LazyClippedPositivity()
     elif positivity is not None:
         raise ValueError(f"unknown value for positivity: '{positivity}'")
 
@@ -143,9 +148,8 @@ def get_data(name: str, root: str, train_split: float = 0.9):
     return random_split(data, [num_train, len(data) - num_train]), shapes
 
 
-def run(hparams: Configuration, sys_config: Configuration):
+def run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
     """ Run experiment with given parameters. """
-    log_dir = time.strftime("results/init_learnability/%y%j-%H%M%S")
     make_deterministic(hparams.seed)
 
     # data
@@ -169,19 +173,18 @@ def run(hparams: Configuration, sys_config: Configuration):
         model=model,
         objective=nn.CrossEntropyLoss(reduction="sum"),
         optimiser=torch.optim.Adam(model.parameters(), **hparams.adam),
-        tb_writer=SummaryWriter(log_dir),
+        tb_writer=SummaryWriter(str(log_dir)),
     )
 
     # logging
     trainer.logger.add_graph(model, next(iter(train_loader))[0].to(device))
-    save_config(hparams, f"{log_dir}/config.yaml")
+    save_config(hparams, log_dir / "config.yaml")
     trainer.log_hparams(hparams, {
         "valid/acc": float("nan"),
         "valid/loss": float("nan"),
     })
 
-    results = trainer.train(train_loader, valid_loader, hparams.epochs)
-    torch.save(model.state_dict(), f"{log_dir}/checkpoint.pth")
+    results = trainer.train(train_loader, valid_loader, hparams.num_epochs)
     trainer.logger.close()
     return results
 
@@ -189,12 +192,14 @@ def run(hparams: Configuration, sys_config: Configuration):
 if __name__ == "__main__":
     from random import Random
     from upsilonconf import config_from_cli
+    repetitions = 10
 
     hparams = config_from_cli()
     system_config = load_config("config/system/local.yaml")
 
     rng = Random(hparams.seed)
-    for seed in (rng.randint(1_000, 10_000) for _ in range(10)):
+    log_dir = Path("results", "init_learnability", time.strftime("%y%j-%H%M%S"))
+    for seed in (rng.randint(1_000, 10_000) for _ in range(repetitions)):
         hparams.overwrite("seed", seed)
         print(hparams)
-        run(hparams, system_config)
+        run(hparams, system_config, log_dir / str(seed))
