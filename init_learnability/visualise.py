@@ -92,7 +92,7 @@ def visualise_results(data: dict[tuple[str, int, str, bool], np.ndarray],
 
     axes[0, 1].legend(loc="lower left")
     for ax, col_title in zip(axes[0, :], dataset_options):
-        ax.set_title(col_title)
+        ax.set_title(col_title.upper())
     # for ax, depth in zip(axes[:, 0], depth_options):
     #     ax.text(-.1, .5, f"{depth + 1}-layer net", transform=ax.transAxes,
     #             ha="right", va="center", rotation="vertical")
