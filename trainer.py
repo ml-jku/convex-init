@@ -184,7 +184,7 @@ class Trainer:
 
     def __init__(
         self, model: nn.Module, objective: nn.Module, optimiser: optim.Optimizer,
-            tb_writer: SummaryWriter = None
+            tb_writer: SummaryWriter = None, checkpoint: bool = False
     ):
         device = next(model.parameters()).device
         self.model = model.to(device)
@@ -192,6 +192,7 @@ class Trainer:
         self.optimiser = optimiser
 
         self.logger = tb_writer
+        self.checkpoint = checkpoint
         self.num_epochs = 0
         self.num_updates = 0
 
@@ -282,11 +283,12 @@ class Trainer:
             }
 
             if self.logger is not None:
-                torch.save({
-                    "model": self.model.state_dict(),
-                    "optim": self.optimiser.state_dict(),
-                    "epoch": self.num_epochs,
-                }, Path(self.logger.log_dir) / "checkpoint.pt")
+                if self.checkpoint:
+                    torch.save({
+                        "model": self.model.state_dict(),
+                        "optim": self.optimiser.state_dict(),
+                        "epoch": self.num_epochs,
+                    }, Path(self.logger.log_dir) / "checkpoint.pt")
 
                 self.logger.add_scalar("train/avg_loss", train_loss, self.num_epochs)
                 for k, m in metrics.items():
