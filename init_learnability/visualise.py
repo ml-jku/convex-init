@@ -6,27 +6,25 @@ from upsilonconf import load_config
 
 
 def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"):
-    from tensorboard.backend.event_processing import event_accumulator
+    from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
     path = Path(path)
     results = {}
     for sub_path in path.iterdir():
-        hparams = load_config(sub_path / "config.yaml")
+        hparams = load_config(next(sub_path.iterdir()) / "config.yaml")
         if filters is None or all(str(v) in str(hparams[k]) for k, v in filters.items()):
-            event_file = next(sub_path.glob("events.out.tfevents.*"))
-            ea = event_accumulator.EventAccumulator(str(event_file))
-            scalars = ea.Reload().Scalars(tag)
-
             key = (
                 hparams.data.name,
                 hparams.model.num_hidden,
                 hparams.model.positivity or "",
                 hparams.model.better_init,
             )
-            res = results.setdefault(key, [])
-            res.append([s.value for s in scalars])
+            results[key] = np.array([[
+                s.value
+                for s in EventAccumulator(str(event_file)).Reload().Scalars(tag)
+            ] for event_file in sub_path.glob("*/events.out.tfevents.*")])
 
-    return {k: np.array(results[k]) for k in sorted(results.keys())}
+    return {k: results[k] for k in sorted(results.keys())}
 
 
 def visualise_results(data: dict[tuple[str, int, str, bool], np.ndarray],
