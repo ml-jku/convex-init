@@ -20,6 +20,21 @@ class Positivity(ABC):
     def init_raw_(self, weight: nn.Parameter, bias: nn.Parameter): ...
 
 
+class NoPositivity(Positivity):
+    """
+    Dummy to make it easier to compare convex with non-convex networks.
+    Initialisation is the regular He-init (i.e. excellent for ReLU).
+    """
+
+    def __call__(self, weight):
+        return weight
+
+    def init_raw_(self, weight, bias):
+        nn.init.kaiming_normal_(weight, nonlinearity="relu")
+        if bias is not None:
+            nn.init.zeros_(bias)
+
+
 class ExponentialPositivity(Positivity):
     """
     Make weights positive by using exponential function.
@@ -58,21 +73,26 @@ class LazyClippedPositivity(Positivity):
         return weight
 
     def init_raw_(self, weight, bias):
-        # import math
-        # fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
-        # const = (3 * 3. ** .5 - 4 * math.pi)
-        # denom = (fan_in - 1) * const + 6 * fan_in * (math.pi - 1)
-        # mean = (6 * math.pi / (fan_in * denom)) ** .5
-        # var = 1 / fan_in
-        # nn.init.normal_(weight, mean, var ** .5)
-        # if bias is not None:
-        #     shift = (3 * fan_in / denom) ** .5
-        #     nn.init.constant_(bias, -shift)
-        nn.init.trunc_normal_(weight, std=0.002)
+        import math
+        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
+        pi = math.pi
+        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5
+        mean = math.log(6 * pi) - math.log(
+            fan_in * (4 * pi + tmp) * (10 * pi + tmp)
+        ) / 2
+        var = math.log(10 * pi + tmp) - math.log(6 * pi)
+
+        nn.init.normal_(weight, mean, var ** .5)
         with torch.no_grad():
-            weight.abs_()
+            weight.exp_()
         if bias is not None:
-            nn.init.zeros_(bias)
+            shift = (3 * fan_in / (4 * pi + tmp)) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
+            nn.init.constant_(bias, -shift)
+        # nn.init.trunc_normal_(weight, std=0.002)
+        # with torch.no_grad():
+        #     weight.abs_()
+        # if bias is not None:
+        #     nn.init.zeros_(bias)
 
 
 class ClippedPositivity(Positivity):
