@@ -1,0 +1,8 @@
+seed: 2023
+batch_size: 256
+epochs: 300
+model:
+  name: fc
+  bad_init: false
+adam:
+  lr: 1e-3
