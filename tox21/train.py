@@ -172,6 +172,7 @@ def final_run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
         objective=MaskedBCEWithLogitsLoss(reduction="sum"),
         optimiser=torch.optim.Adam(model.parameters(), **hparams.adam),
         tb_writer=SummaryWriter(str(log_dir)),
+        checkpoint=True,
     )
 
     # logging

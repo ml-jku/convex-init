@@ -30,12 +30,15 @@ def run(log_dir: Path, sys_config: Configuration):
 
 
 if __name__ == "__main__":
-    stamp = "23041-203625"
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("stamp")
+    args = parser.parse_args()
     sys_config = load_config(Path("config", "system", "local.yaml"))
-    result_path = Path("results", "tox21", stamp)
+    result_path = Path("results", "tox21", args.stamp)
 
     results = {}
-    for rep in result_path.parent.glob(".".join([stamp, "*"])):
+    for rep in result_path.parent.glob(".".join([args.stamp, "*"])):
         rep_results = run(rep, sys_config)
         for k, v in rep_results.items():
             results.setdefault(k, []).append(v)
