@@ -220,7 +220,7 @@ class Trainer:
         for batch in tqdm(batches, total=len(batches), desc="evaluating"):
             logits, y = self._forward(batch)
             err = self.objective(logits, y)
-            avg_loss(err, len(y))
+            avg_loss(err, len(batch[-1]))
             [m(logits, y) for m in metrics.values()]
 
         metrics["loss"] = avg_loss
@@ -234,8 +234,9 @@ class Trainer:
         for batch in tqdm(batches, total=len(batches), desc="updating"):
             logits, y = self._forward(batch)
             err = self.objective(logits, y)
+            batch_loss = avg_loss(err, len(batch[-1]))
             if self.logger is not None:
-                self.logger.add_scalar("train/batch_loss", avg_loss(err, len(y)), self.num_updates)
+                self.logger.add_scalar("train/batch_loss", batch_loss, self.num_updates)
 
             self.optimiser.zero_grad()
             err.backward()
@@ -243,7 +244,7 @@ class Trainer:
             self.num_updates += 1
 
         self.num_epochs += 1
-        return avg_loss.value
+        return avg_loss
 
     def train(self, train_loader, valid_loader, num_epochs: int = 1):
         extra_metrics = {}
@@ -259,21 +260,10 @@ class Trainer:
         # baseline
         out = self.evaluate(train_loader)
         metrics = self.evaluate(valid_loader, extra_metrics)
-        if self.logger is not None:
-            self.logger.add_scalar("train/avg_loss", out["loss"].value, self.num_epochs)
-            for k, m in metrics.items():
-                self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
-        print(f"epoch {0:02d}",
-              ", ".join(f"{k}: {v}" for k, v in metrics.items()),
-              f"(avg train loss: {out['loss'].value:.5e})")
-        auc_values = [v.value for k, v in metrics.items() if k.startswith('auc')]
-        if len(auc_values) > 1:
-            avg_auc = 100 * sum(auc_values) / len(auc_values)
-            self.logger.add_scalar(f"valid/avg_auc", avg_auc, self.num_epochs)
-            print(f"avg AUC: {avg_auc:05.2f}%")
+        self.log_values(out["loss"], metrics)
 
         best_metrics = {k: m.value for k, m in metrics.items()}
-        for epoch in range(1, num_epochs + 1):
+        for epoch in range(self.num_epochs + 1, self.num_epochs + num_epochs + 1):
             train_loss = self.update(train_loader)
             metrics = self.evaluate(valid_loader, extra_metrics)
             best_metrics = {
@@ -282,6 +272,7 @@ class Trainer:
                 for k, v in best_metrics.items()
             }
 
+            self.log_values(train_loss, metrics)
             if self.logger is not None:
                 if self.checkpoint:
                     torch.save({
@@ -290,16 +281,23 @@ class Trainer:
                         "epoch": self.num_epochs,
                     }, Path(self.logger.log_dir) / "checkpoint.pt")
 
-                self.logger.add_scalar("train/avg_loss", train_loss, self.num_epochs)
-                for k, m in metrics.items():
-                    self.logger.add_scalar(f"valid/{k}", m.value, self.num_epochs)
-            print(f"epoch {epoch:02d}",
-                  ", ".join(f"{k}: {v}" for k, v in metrics.items()),
-                  f"(avg train loss: {train_loss:.5e})")
-            auc_values = [v.value for k, v in metrics.items() if k.startswith('auc')]
-            if len(auc_values) > 1:
-                avg_auc = 100 * sum(auc_values) / len(auc_values)
-                self.logger.add_scalar(f"valid/avg_auc", avg_auc, self.num_epochs)
-                print(f"avg AUC: {avg_auc:05.2f}%")
-
         return best_metrics
+
+    def log_values(self, loss, metrics):
+        logger, num_epochs = self.logger, self.num_epochs
+        if logger is not None:
+            logger.add_scalar("train/avg_loss", loss.value, num_epochs)
+            for k, m in metrics.items():
+                logger.add_scalar(f"valid/{k}", m.value, num_epochs)
+
+        print(
+            f"epoch {num_epochs:02d}",
+            ", ".join(f"{k}: {v}" for k, v in metrics.items()),
+            f"(avg train loss: {loss.value:.5e})"
+        )
+        auc_values = [v.value for k, v in metrics.items() if k.startswith('auc')]
+        if len(auc_values) > 1:
+            avg_auc = 100 * sum(auc_values) / len(auc_values)
+            if logger is not None:
+                logger.add_scalar(f"valid/avg_auc", avg_auc, num_epochs)
+            print(f"avg AUC: {avg_auc:05.2f}%")
