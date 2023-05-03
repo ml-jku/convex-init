@@ -54,7 +54,8 @@ def get_layer(n_in: int, n_out: int,
 def get_model(img_shape: torch.Size, num_classes: int,
               num_hidden: int = 1,
               positivity: str = None,
-              better_init: bool = True):
+              better_init: bool = True,
+              skip: bool = False):
     """
     Create neural network for experiment.
 
@@ -70,9 +71,12 @@ def get_model(img_shape: torch.Size, num_classes: int,
         The function to use to make weighs positive (for input-convex nets):
          - ``"exp"`` uses the exponential function to obtain positive weights
          - ``"clip"`` clips values at zero to obtain positive weights
+         - ``"icnn"`` clips values at zero after each update
          - ``""`` or ``None`` results in a NON-convex network
     better_init : bool, optional
         Use better initialisation than the default (He et al., 2015) if possible.
+    skip : bool, optional
+        Wrap layer in skip-connection.
 
     Returns
     -------
@@ -98,10 +102,17 @@ def get_model(img_shape: torch.Size, num_classes: int,
         raise ValueError(f"unknown value for positivity: '{positivity}'")
 
     phi = nn.ReLU()
-    return nn.Sequential(nn.Flatten(), layer1, *(
+    model = nn.Sequential(nn.Flatten(), layer1, *(
         nn.Sequential(phi, get_layer(n_in, n_out, positivity, better_init))
         for n_in, n_out in zip(widths[:-1], widths[1:])
     ))
+    if skip:
+        new_model = LinearSkip(width, widths[1], model[1:3])
+        for layer, num_out in zip(model[3:], widths[2:]):
+            new_model = LinearSkip(width, num_out, nn.Sequential(new_model, layer))
+        model = nn.Sequential(model[0], new_model)
+
+    return model
 
 
 def get_data(name: str, root: str, train_split: float = 0.9):
@@ -162,11 +173,11 @@ def run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = get_model(*shapes, **hparams.model).to(device)
 
-    means, varis = signal_propagation(model, torch.randn(1000, *shapes[0]).cuda())
-    print("squared means: ", means)
-    print("variances:     ", varis)
-    print("second moments:", [tuple(vi + mi for vi, mi in zip(v, m))
-                              for v, m in zip(varis, means)])
+    # means, varis = signal_propagation(model, torch.randn(1000, *shapes[0]).cuda())
+    # print("squared means: ", means)
+    # print("variances:     ", varis)
+    # print("second moments:", [tuple(vi + mi for vi, mi in zip(v, m))
+    #                           for v, m in zip(varis, means)])
 
     # optimisation
     trainer = Trainer(

@@ -7,5 +7,6 @@ model:
   num_hidden: 5
   positivity:
   better_init: true
+  skip: false
 adam:
   lr: 1e-3
