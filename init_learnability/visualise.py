@@ -11,23 +11,25 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
     path = Path(path)
     results = {}
     for sub_path in path.iterdir():
-        hparams = load_config(next(sub_path.iterdir()) / "config.yaml")
+        hparams = load_config(sub_path / "config.yaml")
         if filters is None or all(str(v) in str(hparams[k]) for k, v in filters.items()):
             key = (
-                hparams.data.name,
+                hparams.data.name.upper(),
                 hparams.model.num_hidden,
                 hparams.model.positivity or "",
                 hparams.model.better_init,
+                hparams.model.get("skip", False),
             )
-            results[key] = np.array([[
+            event_file = next(sub_path.glob("events.out.tfevents.*"))
+            results.setdefault(key, []).append([
                 s.value
                 for s in EventAccumulator(str(event_file)).Reload().Scalars(tag)
-            ] for event_file in sub_path.glob("*/events.out.tfevents.*")])
+            ])
 
-    return {k: results[k] for k in sorted(results.keys())}
+    return {k: np.array(results[k]) for k in sorted(results.keys())}
 
 
-def visualise_results(data: dict[tuple[str, int, str, bool], np.ndarray],
+def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
                       scale: str = "log"):
     dataset_options = tuple(sorted({k[0] for k in data.keys()}, key=len))
     depth_options = tuple(sorted({k[1] for k in data.keys()}))
@@ -42,24 +44,27 @@ def visualise_results(data: dict[tuple[str, int, str, bool], np.ndarray],
             axins.set_yscale(scale)
 
     label_colors = {
-        ("", True): ("non-convex", "lightgray"),
-        ("icnn", True): ("ICNN ours", plt.cm.tab20(0)),
-        ("icnn", False): ("ICNN He", plt.cm.tab20(1)),
-        ("exp", True): ("exp-ICNN ours", plt.cm.tab20(2)),
-        ("exp", False): ("exp-ICNN He", plt.cm.tab20(3)),
-        ("clip", True): ("clip-ICNN ours", plt.cm.tab20(4)),
-        ("clip", False): ("clip-ICNN He", plt.cm.tab20(5)),
+        ("", True, False): ("non-convex", "lightgray"),
+        ("icnn", True, False): ("ICNN + init", plt.cm.tab20c(0)),
+        ("icnn", False, True): ("ICNN + skip", plt.cm.tab20c(1)),
+        ("icnn", False, False): ("ICNN", plt.cm.tab20c(2)),
+        ("exp", True, False): ("exp-ICNN + init", plt.cm.tab20c(4)),
+        ("exp", False, True): ("exp-ICNN + skip", plt.cm.tab20c(5)),
+        ("exp", False, False): ("exp-ICNN", plt.cm.tab20c(6)),
+        ("clip", True, False): ("clip-ICNN + init", plt.cm.tab20c(8)),
+        ("clip", False, True): ("clip-ICNN + skip", plt.cm.tab20c(9)),
+        ("clip", False, False): ("clip-ICNN", plt.cm.tab20c(10)),
     }
 
     for k, v in data.items():
-        dataset_name, num_hidden, positivity, best_init = k
-        if positivity == "clip":
+        dataset_name, num_hidden, positivity, best_init, skip = k
+        if positivity == "clip" or best_init and skip:
             continue
         ax = axes[
             depth_options.index(num_hidden),
             dataset_options.index(dataset_name)
         ]
-        lbl, col = label_colors[positivity, best_init]
+        lbl, col = label_colors[positivity, best_init, skip]
 
         x = range(v.shape[1])
         q0, q1, q2, q3, q4 = np.quantile(v, [0., .25, .5, .75, 1.], axis=0)
@@ -90,9 +95,9 @@ def visualise_results(data: dict[tuple[str, int, str, bool], np.ndarray],
         axins = ax.child_axes[0]
         ax.indicate_inset_zoom(axins)
 
-    axes[0, 1].legend(loc="lower left")
+    axes[0, 0].legend(loc="lower left")
     for ax, col_title in zip(axes[0, :], dataset_options):
-        ax.set_title(col_title.upper())
+        ax.set_title(col_title)
     # for ax, depth in zip(axes[:, 0], depth_options):
     #     ax.text(-.1, .5, f"{depth + 1}-layer net", transform=ax.transAxes,
     #             ha="right", va="center", rotation="vertical")

@@ -203,14 +203,16 @@ def run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
 if __name__ == "__main__":
     from random import Random
     from upsilonconf import config_from_cli
-    repetitions = 10
 
     hparams = config_from_cli()
     system_config = load_config("config/system/local.yaml")
+    repetitions = 10
 
-    rng = Random(hparams.seed)
-    log_dir = Path("results", "init_learnability", time.strftime("%y%j-%H%M%S"))
-    for seed in (rng.randint(1_000, 10_000) for _ in range(repetitions)):
-        hparams.overwrite("seed", seed)
-        print(hparams)
-        run(hparams, system_config, log_dir / str(seed))
+    stamp = time.strftime("%y%j-%H%M%S")
+    rng = Random(hparams.pop("seed"))
+    for i in range(repetitions):
+        run(
+            hparams | {"seed": rng.randint(1_000, 10_000)},
+            system_config,
+            Path("results", "init_learnability", f"{stamp}.{i:d}")
+        )
