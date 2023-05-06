@@ -12,7 +12,7 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
     results = {}
     for sub_path in path.iterdir():
         hparams = load_config(sub_path / "config.yaml")
-        if filters is None or all(str(v) in str(hparams[k]) for k, v in filters.items()):
+        if filters is None or all(str(v) == str(hparams[k]) for k, v in filters.items()):
             key = (
                 hparams.data.name.upper(),
                 hparams.model.num_hidden,
@@ -30,18 +30,20 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
 
 
 def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
-                      scale: str = "log"):
+                      scale: str = "log", zoom: str = "in"):
     dataset_options = tuple(sorted({k[0] for k in data.keys()}, key=len))
     depth_options = tuple(sorted({k[1] for k in data.keys()}))
     nrows, ncols = len(depth_options), len(dataset_options)
     fig = plt.figure(figsize=(ncols * 5.6, nrows * 4.2))
     axes = fig.subplots(nrows, ncols, squeeze=False)
     for ax in axes.flat:
-        axins = ax.inset_axes([.5, .4, .45, .35])
-        axins.get_xaxis().set_visible(False)
         if scale is not None:
             ax.set_yscale(scale)
-            axins.set_yscale(scale)
+        if zoom is not None:
+            axins = ax.inset_axes([.45, .52, .5, .4])
+            axins.patch.set_alpha(0.9)
+            axins.get_xaxis().set_visible(False)
+            axins.set_yscale(ax.get_yscale())
 
     label_colors = {
         ("", True, False): ("non-convex", "lightgray"),
@@ -58,7 +60,7 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
 
     for k, v in data.items():
         dataset_name, num_hidden, positivity, best_init, skip = k
-        if positivity == "clip" or best_init and skip:
+        if best_init and skip:
             continue
         ax = axes[
             depth_options.index(num_hidden),
@@ -72,30 +74,32 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
         ax.fill_between(x, q1, q3, color=col, alpha=.5, zorder=1)
         ax.plot(q2, color=col, label=lbl, zorder=3)
         ax.plot(x, q0, "--", q4, "--", color=col, zorder=2)
-        if positivity == "":
-            ax.set_ylim(None, 1.05 * q4.max())
-        elif ax.get_ylim()[0] > q0.min():
-            ax.set_ylim(0.95 * q0.min(), None)
 
-        # zoomed
-        axins = ax.child_axes[0]
-        axins.fill_between(x, q1, q3, color=col, alpha=.5, zorder=1)
-        axins.plot(q2, color=col, label=lbl, zorder=3)
-        axins.plot(x, q0, "--", q4, "--", color=col, zorder=2)
-        # if positivity == "":
-        # #     axins.set_xlim(0, v.shape[1] - 1)
-        # #     axins.set_ylim(.75 * q0.max(), None)
-        # # elif axins.get_ylim()[1] < q4.max():
-        # #     axins.set_ylim(None, q4.max())
-        #     axins.set_ylim(None, .95 * q4.max())
-        # elif axins.get_ylim()[0] > q0.min():
-        #     axins.set_ylim(q0.min(), None)
+        if zoom is not None:
+            # duplicate plot
+            axins = ax.child_axes[0]
+            axins.fill_between(x, q1, q3, color=col, alpha=.5, zorder=1)
+            axins.plot(q2, color=col, label=lbl, zorder=3)
+            axins.plot(x, q0, "--", q4, "--", color=col, zorder=2)
 
-    for ax in axes.flat:
-        axins = ax.child_axes[0]
-        ax.indicate_inset_zoom(axins)
+            zoom_in_ax = axins if zoom == "in" else ax
+            if positivity == "":
+                zoom_in_ax.set_ylim(None, 1.05 * q4.max())
+            elif zoom_in_ax.get_ylim()[0] > q0.min():
+                zoom_in_ax.set_ylim(0.95 * q0.min(), None)
+            # ax.indicate_inset_zoom(axins)
+            # if positivity == "":
+            # #     axins.set_xlim(0, v.shape[1] - 1)
+            # #     axins.set_ylim(.75 * q0.max(), None)
+            # # elif axins.get_ylim()[1] < q4.max():
+            # #     axins.set_ylim(None, q4.max())
+            #     axins.set_ylim(None, .95 * q4.max())
+            # elif axins.get_ylim()[0] > q0.min():
+            #     axins.set_ylim(q0.min(), None)
 
-    axes[0, 0].legend(loc="lower left")
+    vertical = "lower" if zoom == "out" else "upper"
+    horizontal = "right" if zoom is None else "left"
+    axes[0, 0].legend(loc=f"{vertical} {horizontal}")
     for ax, col_title in zip(axes[0, :], dataset_options):
         ax.set_title(col_title)
     # for ax, depth in zip(axes[:, 0], depth_options):
