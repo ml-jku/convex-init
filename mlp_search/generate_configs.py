@@ -4,27 +4,7 @@ common_space = {
     "pre_process": ["normal", "pca", "zca"],
     "adam.lr": [1e-2, 1e-3, 1e-4],
     "adam.weight_decay": [0., 1e-2],
-}
-
-mnist_space = {
     "model.hidden": [
-        (),
-        (100, ),
-        (1000, ),
-        (100, 100),
-        (100, 1000),
-        (1000, 100),
-        (1000, 1000),
-        (100, 100, 100),
-        (100, 1000, 100),
-        (1000, 100, 1000),
-        (1000, 1000, 1000),
-    ]
-} | common_space
-
-cifar_space = {
-    "model.hidden": [
-        (),
         (1000, ),
         (10000, ),
         (1000, 1000),
@@ -36,6 +16,24 @@ cifar_space = {
         (10000, 1000, 10000),
         (10000, 10000, 10000),
     ]
+}
+
+cifar_space = {"data.name": ["CIFAR10"]} | common_space
+mnist_space = {
+    "data.name": ["MNIST"],
+    # original idea was to have different search spaces, but copy-paste bug
+    # "model.hidden": [
+    #     (100, ),
+    #     (1000, ),
+    #     (100, 100),
+    #     (100, 1000),
+    #     (1000, 100),
+    #     (1000, 1000),
+    #     (100, 100, 100),
+    #     (100, 1000, 100),
+    #     (1000, 100, 1000),
+    #     (1000, 1000, 1000),
+    # ]
 } | common_space
 
 
@@ -56,20 +54,25 @@ if __name__ == "__main__":
     config_dir.mkdir(exist_ok=True)
     base_config = upsilonconf.load("default.yaml")
 
-    cifar_config_dir = config_dir / "cifar"
-    cifar_config_dir.mkdir(exist_ok=False)
-    cifar_config = upsilonconf.Configuration(**base_config)
-    cifar_config.overwrite("data.name", "CIFAR10")
-    for i, conf in enumerate(cartesian_dict(dict(cifar_space))):
-        cifar_config.overwrite("id", f"cifar{i:03d}")
-        cifar_config.overwrite_all(conf)
-        upsilonconf.save(cifar_config, cifar_config_dir / f"config{i:03d}.yaml")
+    datasets = {
+        "mnist": mnist_space,
+        "cifar": cifar_space,
+    }
 
-    mnist_config_dir = config_dir / "mnist"
-    mnist_config_dir.mkdir(exist_ok=False)
-    mnist_config = upsilonconf.Configuration(**base_config)
-    mnist_config.overwrite("data.name", "MNIST")
-    for i, conf in enumerate(cartesian_dict(dict(cifar_space))):
-        mnist_config.overwrite("id", f"mnist{i:03d}")
-        mnist_config.overwrite_all(conf)
-        upsilonconf.save(mnist_config, mnist_config_dir / f"config{i:03d}.yaml")
+    models = {
+        "nn": {"convex": "", "fix_init": True, "skip": False},
+        "icnn": {"convex": "icnn", "fix_init": False, "skip": False},
+        "skip": {"convex": "icnn", "fix_init": False, "skip": True},
+        "ours": {"convex": "icnn", "fix_init": True, "skip": False},
+    }
+
+    for model_prefix, model_conf in models.items():
+        for data_prefix, search_space in datasets.items():
+            config_subdir = config_dir / model_prefix / data_prefix
+            config_subdir.mkdir(exist_ok=False, parents=True)
+            config = upsilonconf.Configuration(**base_config)
+            config.overwrite("model", config.model | model_conf)
+            for i, conf in enumerate(cartesian_dict(dict(search_space)), 18):
+                config.overwrite("id", f"{model_prefix}_{data_prefix}{i:03d}")
+                config.overwrite_all(conf)
+                upsilonconf.save(config, config_subdir / f"config{i:03d}.yaml")
