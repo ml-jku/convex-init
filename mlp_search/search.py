@@ -105,15 +105,20 @@ def get_model(img_shape: torch.Size, num_classes: int,
 
 
 def run(hparams, sys_config):
-    result_path = Path("results")
+    result_path = Path("results", "mlp_search")
     for p in result_path.glob(f"{hparams.id}_*"):
         if p.is_dir():
             try:
                 event_path = next(p.glob(f"events.out.tfevents.*"))
                 ea = event_accumulator.EventAccumulator(str(event_path))
                 events = ea.Reload().Scalars("valid/acc")
-                print(f"found existing results for {hparams.id}")
-                return max(e.value for e in events)
+                if len(events) == hparams.num_epochs + 1:
+                    print(f"found existing results for {hparams.id}")
+                    max_event = max(events, key=lambda e: e.value)
+                    return max_event.step, max_event.value
+                else:
+                    print(f"run for {hparams.id} broke after {len(events)} epochs, re-running")
+                    raise KeyError
             except KeyError:
                 for file in p.iterdir():
                     file.unlink()
@@ -152,9 +157,8 @@ def run(hparams, sys_config):
     hparams.overwrite("model.hidden", tup)  # reset for later usage
 
     results = trainer.train(train_loader, valid_loader, hparams.num_epochs)
-    torch.save(model.state_dict(), f"{log_dir}/checkpoint.pth")
     trainer.logger.close()
-    return results["acc"]
+    return None, results["acc"]
 
 
 if __name__ == "__main__":
@@ -180,11 +184,15 @@ if __name__ == "__main__":
 
     best_acc = 0.
     best_params = None
-    for acc, hparams in accuracies:
+    for (epoch, acc), hparams in accuracies:
+        if epoch is not None:
+            hparams.overwrite("num_epochs", epoch)
         if acc > best_acc:
             best_acc = acc
             best_params = hparams
     pool.shutdown()
-    save_config(best_params, f"results/best_{best_params.id}.yaml")
-    print(f"best config: {best_params.id} ({100 * best_acc:05.2f}%)")
-    print(best_params)
+
+    if best_params is not None:
+        save_config(best_params, f"results/best_{best_params.id}.yaml")
+        print(f"best config: {best_params.id} ({100 * best_acc:05.2f}%)")
+        print(best_params)
