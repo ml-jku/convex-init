@@ -4,5 +4,6 @@ epochs: 300
 model:
   name: fc
   bad_init: false
+  skip: false
 adam:
   lr: 1e-3

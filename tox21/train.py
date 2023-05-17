@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torch.utils.tensorboard import SummaryWriter
 from upsilonconf import Configuration, save_config
 
-from convex_modules import ConvexLinear, ExponentialPositivity, LazyClippedPositivity
+from convex_modules import ConvexLinear, ExponentialPositivity, LazyClippedPositivity, LinearSkip
 from trainer import signal_propagation, Trainer
 from utils import he_init_, make_deterministic
 
@@ -64,7 +64,7 @@ class MaskedBCEWithLogitsLoss(nn.BCEWithLogitsLoss):
             return masked_bce
 
 
-def get_model(name: str, num_hidden: int = 128, bad_init: bool = False):
+def get_model(name: str, num_hidden: int = 128, bad_init: bool = False, skip: bool = False):
     num_in, num_out = 512, 12
     if name == "logreg":
         return nn.Linear(num_in, num_out)
@@ -107,6 +107,11 @@ def get_model(name: str, num_hidden: int = 128, bad_init: bool = False):
     if bad_init:
         for idx in [4, 7]:
             he_init_(model[idx].weight, model[idx].bias)
+
+    if skip:
+        new_model = LinearSkip(num_in, num_hidden, model[1:5])
+        new_model = LinearSkip(num_in, num_out, nn.Sequential(new_model, *model[5:]))
+        model = nn.Sequential(model[0], new_model)
 
     return model
 
