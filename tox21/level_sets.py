@@ -1,7 +1,10 @@
+from pathlib import Path
+
 import numpy as np
 import scipy
 import torch
 from torch import nn
+from upsilonconf import load_config
 
 from tox21.train import get_model, Tox21Original
 
@@ -59,25 +62,54 @@ def track_level_set(model, x0, direction, x_ref,
 
 
 if __name__ == "__main__":
-    data = Tox21Original(sys_config.data_root, split="valid")
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("stamp")
+    args = parser.parse_args()
+    sys_config = load_config(Path("config", "system", "local.yaml"))
+    result_path = Path("results", "tox21", args.stamp + ".0")
+    hparams = load_config(result_path / "config.yaml")
+
+    # data = Tox21Original(sys_config.data_root, split="train")
+    # (x0, y0), (x1, y1) = data[416], data[4593]  # chosen by Johannes (at random)
+    data = Tox21Original(sys_config.data_root, split="test")
     model = get_model(**hparams.model)
-    target_assay, num_steps = 0, 10
-    (x0, _), (x1, _) = data[0], data[1]
+    model.load_state_dict(torch.load(result_path / "checkpoint.pt")["model"])
     model.eval().requires_grad_(False)
+    num_steps = 8
+    torch.manual_seed(hparams.seed)
+    indices = torch.randint(len(data), size=(12, 2))
+    for target_assay, (src_idx, target_idx) in enumerate(indices):
+        (x0, y0), (x1, y1) = data[src_idx], data[target_idx]
+        print(torch.sigmoid(model(torch.from_numpy(x0))))
+        print(y0)
+        print(torch.sigmoid(model(torch.from_numpy(x1))))
+        print(y1)
+        # (sketch of) approach from Nesterov et al.
+        x_min = find_minimum(model, x0, assay_idx=target_assay)
+        level_set = interpolate_along_level_set(
+            model, x0, x1, x_min, assay_idx=target_assay
+        )
+        levels = model(torch.cat([level_set, torch.from_numpy(x1).unsqueeze(0)]))
+        print(levels[:, target_assay])
 
-    # (sketch of) approach from Nesterov et al.
-    x_min = find_minimum(model, x0, assay_idx=target_assay)
-    level_set = interpolate_along_level_set(
-        model, x0, x1, x_min, assay_idx=target_assay
-    )
-    levels = model(level_set)[:, target_assay]
-    print(levels)
+        np.savez(
+            file=str(result_path / f"level_set_task{target_assay + 1}.npz"),
+            cddds=np.r_[level_set.numpy(), x1[None, :]],
+            preds=torch.sigmoid(levels)
+        )
 
-    # my suggestion: use orthogonal projections
-    x_ref = find_minimum(model, x0, assay_idx=target_assay, max_iter=10)
-    direction = (x1 - x0) / np.linalg.norm(x1 - x0)
-    level_set = track_level_set(
-        model, x0, direction, x_ref, assay_idx=target_assay
-    )
-    levels = model(level_set)[:, target_assay]
-    print(levels)
+        # my suggestion: use orthogonal projections
+        x_ref = find_minimum(model, x0, assay_idx=target_assay, max_iter=10)
+        direction = (x1 - x0) / np.linalg.norm(x1 - x0)
+        level_set = track_level_set(
+            model, x0, direction, x_ref, assay_idx=target_assay
+        )
+        levels = model(torch.cat([level_set, torch.from_numpy(x1).unsqueeze(0)]))
+        print(levels[:, target_assay])
+
+        np.savez(
+            file=str(result_path / f"level_set_task{target_assay + 1}_.npz"),
+            cddds=np.r_[level_set.numpy(), x1[None, :]],
+            preds=torch.sigmoid(levels)
+        )
