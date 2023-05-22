@@ -1,0 +1,123 @@
+<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+       text { font-family: Arial, sans-serif; font-size: 1.9px; text-anchor: middle; }
+       .neuron { fill: white; stroke: lightgray; stroke-width: .8; }
+       .synapse { fill: none; stroke: black; stroke-width: .8; }
+       .hidden { stroke: black; }
+       .positive { stroke: #d65244;}
+       .negative { stroke: #9ebeff;}
+    </style>
+  </defs>
+  <g>
+    <g transform="translate(3, 0)">
+      <g>
+        <path style="" d="M 10.364 10.052 L 10.908 10.052 L 10.908 9.638 L 10.364 9.638 L 10.364 10.052 Z M 10.908 10.052 L 11.454 10.052 L 11.454 7.218 L 10.908 7.218 L 10.908 10.052 Z M 11.454 10.052 L 12 10.052 L 12 2.6 L 11.454 2.6 L 11.454 10.052 Z M 12 10.052 L 12.546 10.052 L 12.546 2.618 L 12 2.618 L 12 10.052 Z M 12.546 10.052 L 13.09 10.052 L 13.09 7.212 L 12.546 7.212 L 12.546 10.052 Z M 13.09 10.052 L 13.636 10.052 L 13.636 9.632 L 13.09 9.632 L 13.09 10.052 Z"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="7" y1="10" x2="17" y2="10"></line>
+        <line style="stroke: black; stroke-width: 0.1px" x1="12" y1="10.5" x2="12" y2="10"></line>
+        <text x="12" y="12.5">0</text>
+      </g>
+      <g>
+        <path style="" d="M 25.822 10.042 L 26.23 10.042 L 26.23 10.012 L 25.822 10.012 L 25.822 10.042 Z M 26.23 10.042 L 26.64 10.042 L 26.64 9.608 L 26.23 9.608 L 26.23 10.042 Z M 26.64 10.042 L 27.05 10.042 L 27.05 7.722 L 26.64 7.722 L 26.64 10.042 Z M 27.05 10.042 L 27.458 10.042 L 27.458 4.008 L 27.05 4.008 L 27.05 10.042 Z M 27.458 10.042 L 27.868 10.042 L 27.868 1.4 L 27.458 1.4 L 27.458 10.042 Z M 27.868 10.042 L 28.278 10.042 L 28.278 2.646 L 27.868 2.646 L 27.868 10.042 Z M 28.278 10.042 L 28.686 10.042 L 28.686 5.922 L 28.278 5.922 L 28.278 10.042 Z M 28.686 10.042 L 29.096 10.042 L 29.096 8.428 L 28.686 8.428 L 28.686 10.042 Z M 29.096 10.042 L 29.506 10.042 L 29.506 9.598 L 29.096 9.598 L 29.096 10.042 Z M 29.506 10.042 L 29.916 10.042 L 29.916 9.952 L 29.506 9.952 L 29.506 10.042 Z"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="20" y1="10" x2="24.8" y2="10"></line>
+        <path style="fill: none; stroke: black; stroke-width: 0.1px;" d="M 24.6 10.442 L 25 9.642 M 25 10.442 L 25.4 9.642"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="25.2" y1="10" x2="30" y2="10"></line>
+        <line style="stroke: black; stroke-width: 0.1px" x1="28" y1="10.5" x2="28" y2="10"></line>
+        <text x="28" y="12.5">5</text>
+      </g>
+      <g>
+        <path style="" d="M 38.96 10.028 L 39.008 10.028 L 39.008 10.01 L 38.96 10.01 L 38.96 10.028 Z M 39.008 10.028 L 39.058 10.028 L 39.058 10.002 L 39.008 10.002 L 39.008 10.028 Z M 39.058 10.028 L 39.108 10.028 L 39.108 9.994 L 39.058 9.994 L 39.058 10.028 Z M 39.108 10.028 L 39.158 10.028 L 39.158 9.984 L 39.108 9.984 L 39.108 10.028 Z M 39.158 10.028 L 39.208 10.028 L 39.208 9.972 L 39.158 9.972 L 39.158 10.028 Z M 39.208 10.028 L 39.258 10.028 L 39.258 9.956 L 39.208 9.956 L 39.208 10.028 Z M 39.258 10.028 L 39.308 10.028 L 39.308 9.94 L 39.258 9.94 L 39.258 10.028 Z M 39.308 10.028 L 39.356 10.028 L 39.356 9.92 L 39.308 9.92 L 39.308 10.028 Z M 39.356 10.028 L 39.406 10.028 L 39.406 9.896 L 39.356 9.896 L 39.356 10.028 Z M 39.406 10.028 L 39.456 10.028 L 39.456 9.876 L 39.406 9.876 L 39.406 10.028 Z M 39.456 10.028 L 39.506 10.028 L 39.506 9.842 L 39.456 9.842 L 39.456 10.028 Z M 39.506 10.028 L 39.556 10.028 L 39.556 9.81 L 39.506 9.81 L 39.506 10.028 Z M 39.556 10.028 L 39.606 10.028 L 39.606 9.778 L 39.556 9.778 L 39.556 10.028 Z M 39.606 10.028 L 39.656 10.028 L 39.656 9.734 L 39.606 9.734 L 39.606 10.028 Z M 39.656 10.028 L 39.706 10.028 L 39.706 9.702 L 39.656 9.702 L 39.656 10.028 Z M 39.706 10.028 L 39.754 10.028 L 39.754 9.662 L 39.706 9.662 L 39.706 10.028 Z M 39.754 10.028 L 39.804 10.028 L 39.804 9.618 L 39.754 9.618 L 39.754 10.028 Z M 39.804 10.028 L 39.854 10.028 L 39.854 9.574 L 39.804 9.574 L 39.804 10.028 Z M 39.854 10.028 L 39.904 10.028 L 39.904 9.506 L 39.854 9.506 L 39.854 10.028 Z M 39.904 10.028 L 39.954 10.028 L 39.954 9.462 L 39.904 9.462 L 39.904 10.028 Z M 39.954 10.028 L 40.004 10.028 L 40.004 9.412 L 39.954 9.412 L 39.954 10.028 Z M 40.004 10.028 L 40.054 10.028 L 40.054 9.37 L 40.004 9.37 L 40.004 10.028 Z M 40.054 10.028 L 40.102 10.028 L 40.102 9.332 L 40.054 9.332 L 40.054 10.028 Z M 40.102 10.028 L 40.152 10.028 L 40.152 9.264 L 40.102 9.264 L 40.102 10.028 Z M 40.152 10.028 L 40.202 10.028 L 40.202 9.21 L 40.152 9.21 L 40.152 10.028 Z M 40.202 10.028 L 40.252 10.028 L 40.252 9.174 L 40.202 9.174 L 40.202 10.028 Z M 40.252 10.028 L 40.302 10.028 L 40.302 9.142 L 40.252 9.142 L 40.252 10.028 Z M 40.302 10.028 L 40.352 10.028 L 40.352 9.122 L 40.302 9.122 L 40.302 10.028 Z M 40.352 10.028 L 40.402 10.028 L 40.402 9.104 L 40.352 9.104 L 40.352 10.028 Z M 40.402 10.028 L 40.452 10.028 L 40.452 9.062 L 40.402 9.062 L 40.402 10.028 Z M 40.452 10.028 L 40.5 10.028 L 40.5 9.042 L 40.452 9.042 L 40.452 10.028 Z M 40.5 10.028 L 40.55 10.028 L 40.55 9.03 L 40.5 9.03 L 40.5 10.028 Z M 40.55 10.028 L 40.6 10.028 L 40.6 9 L 40.55 9 L 40.55 10.028 Z M 40.6 10.028 L 40.65 10.028 L 40.65 9.016 L 40.6 9.016 L 40.6 10.028 Z M 40.65 10.028 L 40.7 10.028 L 40.7 9.052 L 40.65 9.052 L 40.65 10.028 Z M 40.7 10.028 L 40.75 10.028 L 40.75 9.062 L 40.7 9.062 L 40.7 10.028 Z M 40.75 10.028 L 40.8 10.028 L 40.8 9.096 L 40.75 9.096 L 40.75 10.028 Z M 40.8 10.028 L 40.848 10.028 L 40.848 9.12 L 40.8 9.12 L 40.8 10.028 Z M 40.848 10.028 L 40.898 10.028 L 40.898 9.132 L 40.848 9.132 L 40.848 10.028 Z M 40.898 10.028 L 40.948 10.028 L 40.948 9.17 L 40.898 9.17 L 40.898 10.028 Z M 40.948 10.028 L 40.998 10.028 L 40.998 9.21 L 40.948 9.21 L 40.948 10.028 Z M 40.998 10.028 L 41.048 10.028 L 41.048 9.278 L 40.998 9.278 L 40.998 10.028 Z M 41.048 10.028 L 41.098 10.028 L 41.098 9.32 L 41.048 9.32 L 41.048 10.028 Z M 41.098 10.028 L 41.148 10.028 L 41.148 9.358 L 41.098 9.358 L 41.098 10.028 Z M 41.148 10.028 L 41.198 10.028 L 41.198 9.4 L 41.148 9.4 L 41.148 10.028 Z M 41.198 10.028 L 41.246 10.028 L 41.246 9.436 L 41.198 9.436 L 41.198 10.028 Z M 41.246 10.028 L 41.296 10.028 L 41.296 9.486 L 41.246 9.486 L 41.246 10.028 Z M 41.296 10.028 L 41.346 10.028 L 41.346 9.534 L 41.296 9.534 L 41.296 10.028 Z M 41.346 10.028 L 41.396 10.028 L 41.396 9.576 L 41.346 9.576 L 41.346 10.028 Z M 41.396 10.028 L 41.446 10.028 L 41.446 9.624 L 41.396 9.624 L 41.396 10.028 Z M 41.446 10.028 L 41.496 10.028 L 41.496 9.65 L 41.446 9.65 L 41.446 10.028 Z M 41.496 10.028 L 41.546 10.028 L 41.546 9.696 L 41.496 9.696 L 41.496 10.028 Z M 41.546 10.028 L 41.594 10.028 L 41.594 9.718 L 41.546 9.718 L 41.546 10.028 Z M 41.594 10.028 L 41.644 10.028 L 41.644 9.764 L 41.594 9.764 L 41.594 10.028 Z M 41.644 10.028 L 41.694 10.028 L 41.694 9.802 L 41.644 9.802 L 41.644 10.028 Z M 41.694 10.028 L 41.744 10.028 L 41.744 9.824 L 41.694 9.824 L 41.694 10.028 Z M 41.744 10.028 L 41.794 10.028 L 41.794 9.842 L 41.744 9.842 L 41.744 10.028 Z M 41.794 10.028 L 41.844 10.028 L 41.844 9.864 L 41.794 9.864 L 41.794 10.028 Z M 41.844 10.028 L 41.894 10.028 L 41.894 9.884 L 41.844 9.884 L 41.844 10.028 Z M 41.894 10.028 L 41.944 10.028 L 41.944 9.91 L 41.894 9.91 L 41.894 10.028 Z M 41.944 10.028 L 41.992 10.028 L 41.992 9.922 L 41.944 9.922 L 41.944 10.028 Z M 41.992 10.028 L 42.042 10.028 L 42.042 9.938 L 41.992 9.938 L 41.992 10.028 Z M 42.042 10.028 L 42.092 10.028 L 42.092 9.95 L 42.042 9.95 L 42.042 10.028 Z M 42.092 10.028 L 42.142 10.028 L 42.142 9.96 L 42.092 9.96 L 42.092 10.028 Z M 42.142 10.028 L 42.192 10.028 L 42.192 9.97 L 42.142 9.97 L 42.142 10.028 Z M 42.192 10.028 L 42.242 10.028 L 42.242 9.98 L 42.192 9.98 L 42.192 10.028 Z M 42.242 10.028 L 42.292 10.028 L 42.292 9.99 L 42.242 9.99 L 42.242 10.028 Z M 42.292 10.028 L 42.34 10.028 L 42.34 9.996 L 42.292 9.996 L 42.292 10.028 Z M 42.34 10.028 L 42.39 10.028 L 42.39 10 L 42.34 10 L 42.34 10.028 Z M 42.39 10.028 L 42.44 10.028 L 42.44 10.008 L 42.39 10.008 L 42.39 10.028 Z M 42.44 10.028 L 42.49 10.028 L 42.49 10.008 L 42.44 10.008 L 42.44 10.028 Z M 42.49 10.028 L 42.54 10.028 L 42.54 10.012 L 42.49 10.012 L 42.49 10.028 Z M 42.54 10.028 L 42.59 10.028 L 42.59 10.016 L 42.54 10.016 L 42.54 10.028 Z"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="33" y1="10" x2="37.8" y2="10"></line>
+        <path style="fill: none; stroke: black; stroke-width: 0.1px;" d="M 37.6 10.442 L 38 9.642 M 38 10.442 L 38.4 9.642"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="38.2" y1="10" x2="43" y2="10"></line>
+        <line style="stroke: black; stroke-width: 0.1px" x1="40.7" y1="10.5" x2="40.7" y2="10"></line>
+        <text x="40.7" y="12.5">51</text>
+      </g>
+    </g>
+    <!--g>
+      <g>
+        <path style="fill: lightgray;" d="M 5.091 19.098 L 5.35 19.098 L 5.35 19.044 L 5.091 19.044 L 5.091 19.098 Z M 5.35 19.098 L 5.61 19.098 L 5.61 18.476 L 5.35 18.476 L 5.35 19.098 Z M 5.61 19.098 L 5.87 19.098 L 5.87 16.501 L 5.61 16.501 L 5.61 19.098 Z M 5.87 19.098 L 6.13 19.098 L 6.13 14.9 L 5.87 14.9 L 5.87 19.098 Z M 6.13 19.098 L 6.39 19.098 L 6.39 16.498 L 6.13 16.498 L 6.13 19.098 Z M 6.39 19.098 L 6.65 19.098 L 6.65 18.488 L 6.39 18.488 L 6.39 19.098 Z M 6.65 19.098 L 6.909 19.098 L 6.909 19.04 L 6.65 19.04 L 6.65 19.098 Z"></path>
+        <line style="stroke: lightgray; stroke-width: 0.1px;" x1="4" y1="19.098" x2="8" y2="19.098"></line>
+      </g>
+      <g>
+        <rect y="30" width="1.5" height="1.5" style="fill: rgb(179, 3, 38);" x="4.5"></rect>
+        <rect x="6" y="30" width="1.5" height="1.5" style="fill: rgb(220, 220, 221);"></rect>
+        <rect y="31.5" width="1.5" height="1.5" style="fill: rgb(220, 220, 221);" x="4.5"></rect>
+        <rect x="6" y="31.5" width="1.5" height="1.5" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+    </g-->
+    <g transform="translate(3, 0)">
+      <polyline points="17,34 9,22 17,22 9,28 17,16" class="synapse positive"></polyline>
+      <polyline points="17,16 9,22 17,28 9,28 17,34" class="synapse negative"></polyline>
+      <circle cx="9" cy="22" r="2" class="neuron"></circle>
+      <circle cx="9" cy="28" r="2" class="neuron"></circle>
+      <polyline points="17,16 25,19 17,22 25,25 17,28 25,31 17,34" class="synapse positive"></polyline>
+      <polyline points="17,16 25,25 17,34 25,31 17,22 25,19 17,28" class="synapse positive"></polyline>
+      <circle cx="17" cy="16" r="2" class="hidden neuron"></circle>
+      <circle cx="17" cy="22" r="2" class="hidden neuron"></circle>
+      <circle cx="17" cy="28" r="2" class="hidden neuron"></circle>
+      <circle cx="17" cy="34" r="2" class="hidden neuron"></circle>
+      <polyline points="33,16 25,19 33,22 25,25 33,28 25,31 33,34" class="synapse positive"></polyline>
+      <polyline points="33,16 25,25 33,34 25,31 33,22 25,19 33,28" class="synapse positive"></polyline>
+      <circle cx="25" cy="19" r="2" class="hidden neuron"></circle>
+      <circle cx="25" cy="25" r="2" class="hidden neuron"></circle>
+      <circle cx="25" cy="31" r="2" class="hidden neuron"></circle>
+      <polyline points="33,16 41,25 33,28" class="synapse positive"></polyline>
+      <polyline points="33,22 41,25 33,34" class="synapse positive"></polyline>
+      <circle cx="33" cy="16" r="2" class="hidden neuron"></circle>
+      <circle cx="33" cy="22" r="2" class="hidden neuron"></circle>
+      <circle cx="33" cy="28" r="2" class="hidden neuron"></circle>
+      <circle cx="33" cy="34" r="2" class="hidden neuron"></circle>
+      <circle cx="41" cy="25" r="2" class="neuron"></circle>
+    </g>
+    <g transform="translate(3, 0)">
+      <g>
+        <rect x="8" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="10" y="38" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="12" y="38" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="14" y="38" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="8" y="40" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="10" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="12" y="40" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="14" y="40" width="2" height="2" style="fill: rgb(223, 219, 217);"></rect>
+        <rect x="8" y="42" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="10" y="42" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="12" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="14" y="42" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="8" y="44" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="10" y="44" width="2" height="2" style="fill: rgb(223, 219, 217);"></rect>
+        <rect x="12" y="44" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="14" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+      <g>
+        <rect x="22" y="39" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="24" y="39" width="2" height="2" style="fill: rgb(245, 158, 127);"></rect>
+        <rect x="26" y="39" width="2" height="2" style="fill: rgb(245, 158, 127);"></rect>
+        <rect x="22" y="41" width="2" height="2" style="fill: rgb(245, 158, 127);"></rect>
+        <rect x="24" y="41" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="26" y="41" width="2" height="2" style="fill: rgb(245, 158, 127);"></rect>
+        <rect x="22" y="43" width="2" height="2" style="fill: rgb(245, 158, 127);"></rect>
+        <rect x="24" y="43" width="2" height="2" style="fill: rgb(245, 158, 127);"></rect>
+        <rect x="26" y="43" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+      <g>
+        <rect x="34" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="36" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="38" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="40" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="34" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="36" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="38" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="40" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="34" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="36" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="38" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="40" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="34" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="36" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="38" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="40" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+    </g>
+  </g>
+</svg>

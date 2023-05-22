@@ -1,0 +1,119 @@
+<svg viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+       text { font-family: Arial, sans-serif; font-size: 1.9px; text-anchor: middle; }
+       .neuron { fill: white; stroke: lightgray; stroke-width: .8; }
+       .synapse { fill: none; stroke: black; stroke-width: .8; }
+       .hidden { stroke: black; }
+       .positive { stroke: #d65244;}
+       .negative { stroke: #9ebeff;}
+    </style>
+  </defs>
+  <g>
+    <g transform="translate(3, 0)">
+      <g>
+        <path style="" d="M 10.364 10.052 L 10.908 10.052 L 10.908 9.638 L 10.364 9.638 L 10.364 10.052 Z M 10.908 10.052 L 11.454 10.052 L 11.454 7.218 L 10.908 7.218 L 10.908 10.052 Z M 11.454 10.052 L 12 10.052 L 12 2.6 L 11.454 2.6 L 11.454 10.052 Z M 12 10.052 L 12.546 10.052 L 12.546 2.618 L 12 2.618 L 12 10.052 Z M 12.546 10.052 L 13.09 10.052 L 13.09 7.212 L 12.546 7.212 L 12.546 10.052 Z M 13.09 10.052 L 13.636 10.052 L 13.636 9.632 L 13.09 9.632 L 13.09 10.052 Z"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="7" y1="10" x2="17" y2="10"></line>
+        <line style="stroke: black; stroke-width: 0.1px" x1="12" y1="10.5" x2="12" y2="10"></line>
+        <text x="12" y="12.5">0</text>
+      </g>
+      <g>
+        <path style="" d="M 22.992 10.042 L 23.564 10.042 L 23.564 9.958 L 22.992 9.958 L 22.992 10.042 Z M 23.564 10.042 L 24.138 10.042 L 24.138 9.006 L 23.564 9.006 L 23.564 10.042 Z M 24.138 10.042 L 24.712 10.042 L 24.712 5.074 L 24.138 5.074 L 24.138 10.042 Z M 24.712 10.042 L 25.288 10.042 L 25.288 1.4 L 24.712 1.4 L 24.712 10.042 Z M 25.288 10.042 L 25.862 10.042 L 25.862 4.676 L 25.288 4.676 L 25.288 10.042 Z M 25.862 10.042 L 26.436 10.042 L 26.436 8.832 L 25.862 8.832 L 25.862 10.042 Z M 26.436 10.042 L 27.008 10.042 L 27.008 9.932 L 26.436 9.932 L 26.436 10.042 Z"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="20" y1="10" x2="30" y2="10"></line>
+        <line style="stroke: black; stroke-width: 0.1px" x1="25" y1="10.5" x2="25" y2="10"></line>
+        <text x="25" y="12.5">0</text>
+      </g>
+      <g>
+        <path style="" d="M 35.818 10.054 L 36.364 10.054 L 36.364 10.014 L 35.818 10.014 L 35.818 10.054 Z M 36.364 10.054 L 36.908 10.054 L 36.908 9.55 L 36.364 9.55 L 36.364 10.054 Z M 36.908 10.054 L 37.454 10.054 L 37.454 7.148 L 36.908 7.148 L 36.908 10.054 Z M 37.454 10.054 L 38 10.054 L 38 2.808 L 37.454 2.808 L 37.454 10.054 Z M 38 10.054 L 38.546 10.054 L 38.546 2.7 L 38 2.7 L 38 10.054 Z M 38.546 10.054 L 39.09 10.054 L 39.09 7.148 L 38.546 7.148 L 38.546 10.054 Z M 39.09 10.054 L 39.636 10.054 L 39.636 9.596 L 39.09 9.596 L 39.09 10.054 Z M 39.636 10.054 L 40.182 10.054 L 40.182 10.026 L 39.636 10.026 L 39.636 10.054 Z"></path>
+        <line style="stroke: black; stroke-width: 0.2px;" x1="33" y1="10" x2="43" y2="10"></line>
+        <line style="stroke: black; stroke-width: 0.1px" x1="38" y1="10.5" x2="38" y2="10"></line>
+        <text x="38" y="12.5">0</text>
+      </g>
+    </g>
+    <!--g>
+      <g>
+        <path style="fill: lightgray;" d="M 5.091 19.098 L 5.35 19.098 L 5.35 19.044 L 5.091 19.044 L 5.091 19.098 Z M 5.35 19.098 L 5.61 19.098 L 5.61 18.476 L 5.35 18.476 L 5.35 19.098 Z M 5.61 19.098 L 5.87 19.098 L 5.87 16.501 L 5.61 16.501 L 5.61 19.098 Z M 5.87 19.098 L 6.13 19.098 L 6.13 14.9 L 5.87 14.9 L 5.87 19.098 Z M 6.13 19.098 L 6.39 19.098 L 6.39 16.498 L 6.13 16.498 L 6.13 19.098 Z M 6.39 19.098 L 6.65 19.098 L 6.65 18.488 L 6.39 18.488 L 6.39 19.098 Z M 6.65 19.098 L 6.909 19.098 L 6.909 19.04 L 6.65 19.04 L 6.65 19.098 Z"></path>
+        <line style="stroke: lightgray; stroke-width: 0.1px;" x1="4" y1="19.098" x2="8" y2="19.098"></line>
+      </g>
+      <g>
+        <rect y="30" width="1.5" height="1.5" style="fill: rgb(179, 3, 38);" x="4.5"></rect>
+        <rect x="6" y="30" width="1.5" height="1.5" style="fill: rgb(220, 220, 221);"></rect>
+        <rect y="31.5" width="1.5" height="1.5" style="fill: rgb(220, 220, 221);" x="4.5"></rect>
+        <rect x="6" y="31.5" width="1.5" height="1.5" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+    </g-->
+    <g transform="translate(3, 0)">
+      <polyline points="17,34 9,22 17,22 9,28 17,16" class="synapse positive"></polyline>
+      <polyline points="17,16 9,22 17,28 9,28 17,34" class="synapse negative"></polyline>
+      <circle cx="9" cy="22" r="2" class="neuron"></circle>
+      <circle cx="9" cy="28" r="2" class="neuron"></circle>
+      <polyline points="17,16 25,25 17,34 25,31 17,22 25,19 17,28" class="synapse negative"></polyline>
+      <polyline points="17,16 25,19 17,22 25,25 17,28 25,31 17,34" class="synapse positive"></polyline>
+      <circle cx="17" cy="16" r="2" class="hidden neuron"></circle>
+      <circle cx="17" cy="22" r="2" class="hidden neuron"></circle>
+      <circle cx="17" cy="28" r="2" class="hidden neuron"></circle>
+      <circle cx="17" cy="34" r="2" class="hidden neuron"></circle>
+      <polyline points="33,16 25,25 33,34 25,31 33,22 25,19 33,28" class="synapse positive"></polyline>
+      <polyline points="33,16 25,19 33,22 25,25 33,28 25,31 33,34" class="synapse negative"></polyline>
+      <circle cx="25" cy="19" r="2" class="hidden neuron"></circle>
+      <circle cx="25" cy="25" r="2" class="hidden neuron"></circle>
+      <circle cx="25" cy="31" r="2" class="hidden neuron"></circle>
+      <polyline points="33,16 41,25 33,28" class="synapse positive"></polyline>
+      <polyline points="33,22 41,25 33,34" class="synapse negative"></polyline>
+      <circle cx="33" cy="16" r="2" class="hidden neuron"></circle>
+      <circle cx="33" cy="22" r="2" class="hidden neuron"></circle>
+      <circle cx="33" cy="28" r="2" class="hidden neuron"></circle>
+      <circle cx="33" cy="34" r="2" class="hidden neuron"></circle>
+      <circle cx="41" cy="25" r="2" class="neuron"></circle>
+    </g>
+    <g transform="translate(3, 0)">
+      <g>
+        <rect x="8" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="10" y="38" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="12" y="38" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="14" y="38" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="8" y="40" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="10" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="12" y="40" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="14" y="40" width="2" height="2" style="fill: rgb(223, 219, 217);"></rect>
+        <rect x="8" y="42" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="10" y="42" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="12" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="14" y="42" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="8" y="44" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="10" y="44" width="2" height="2" style="fill: rgb(223, 219, 217);"></rect>
+        <rect x="12" y="44" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="14" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+      <g>
+        <rect x="22" y="39" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="24" y="39" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="26" y="39" width="2" height="2" style="fill: rgb(222, 219, 218);"></rect>
+        <rect x="22" y="41" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="24" y="41" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="26" y="41" width="2" height="2" style="fill: rgb(219, 220, 222);"></rect>
+        <rect x="22" y="43" width="2" height="2" style="fill: rgb(222, 219, 218);"></rect>
+        <rect x="24" y="43" width="2" height="2" style="fill: rgb(219, 220, 222);"></rect>
+        <rect x="26" y="43" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+      <g>
+        <rect x="34" y="38" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="36" y="38" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="38" y="38" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="40" y="38" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="34" y="40" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="36" y="40" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="38" y="40" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="40" y="40" width="2" height="2" style="fill: rgb(219, 220, 222);"></rect>
+        <rect x="34" y="42" width="2" height="2" style="fill: rgb(221, 220, 219);"></rect>
+        <rect x="36" y="42" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="38" y="42" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+        <rect x="40" y="42" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="34" y="44" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="36" y="44" width="2" height="2" style="fill: rgb(219, 220, 222);"></rect>
+        <rect x="38" y="44" width="2" height="2" style="fill: rgb(220, 220, 221);"></rect>
+        <rect x="40" y="44" width="2" height="2" style="fill: rgb(179, 3, 38);"></rect>
+      </g>
+    </g>
+  </g>
+</svg>
