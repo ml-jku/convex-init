@@ -106,7 +106,10 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
     axes[0, 0].legend(loc=f"{vertical} {horizontal}")
     axes[0, 0].set_ylabel("training loss")
     for ax, col_title in zip(axes[0, :], dataset_options):
-        ax.set_title(col_title, fontdict={"fontsize": "x-large"})
+        ax.set_title(col_title)
+    if axes.shape[0] > 1:
+        for ax, depth in zip(axes[:, 0], depth_options):
+            ax.set_ylabel(f"{depth} hidden layers")
     # for ax, depth in zip(axes[:, 0], depth_options):
     #     ax.text(-.1, .5, f"{depth + 1}-layer net", transform=ax.transAxes,
     #             ha="right", va="center", rotation="vertical")
@@ -123,10 +126,17 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("dir", type=Path, help="directory with results")
+    parser.add_argument("--convexity", type=str, default=None,
+                        choices=["icnn", "exp", "clip"])
     parser.add_argument("--tb-tag", type=str, default="train/batch_loss",
                         help="tensorboard tag to visualise")
     args = parser.parse_args()
 
+    filters = {}
+    if args.convexity is not None:
+        filters["model.positivity"] = args.convexity
+
     plot_scale = "linear" if "acc" in args.tb_tag else "log"
-    data = collect_results(args.dir, tag=args.tb_tag)
+    ref_data = collect_results(args.dir, tag=args.tb_tag, filters={"model.positivity": "None"})
+    data = ref_data | collect_results(args.dir, tag=args.tb_tag, filters=filters)
     visualise_results(data, scale=plot_scale).show()
