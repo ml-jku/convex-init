@@ -46,20 +46,22 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
             axins.set_yscale(ax.get_yscale())
 
     label_colors = {
-        ("", True, False): ("non-convex", "lightgray"),
-        ("icnn", True, False): ("ICNN + init", plt.cm.tab20c(0)),
-        ("icnn", False, True): ("ICNN + skip", plt.cm.tab20c(1)),
-        ("icnn", False, False): ("ICNN", plt.cm.tab20c(2)),
-        ("exp", True, False): ("exp-ICNN + init", plt.cm.tab20c(4)),
-        ("exp", False, True): ("exp-ICNN + skip", plt.cm.tab20c(5)),
-        ("exp", False, False): ("exp-ICNN", plt.cm.tab20c(6)),
+        ("", True, False): ("non-convex", "gray"),
+        ("icnn", True, False): ("ICNN + init", "#0084bb"),
+        ("icnn", False, True): ("ICNN + skip", plt.cm.tab10(1)),
+        ("icnn", False, False): ("ICNN", plt.cm.tab10(2)),
+        ("exp", True, False): ("exp-ICNN + init", "#0084bb"),
+        ("exp", False, True): ("exp-ICNN + skip", plt.cm.tab10(1)),
+        ("exp", False, False): ("exp-ICNN", plt.cm.tab10(2)),
         ("clip", True, False): ("clip-ICNN + init", plt.cm.tab20c(8)),
         ("clip", False, True): ("clip-ICNN + skip", plt.cm.tab20c(9)),
         ("clip", False, False): ("clip-ICNN", plt.cm.tab20c(10)),
     }
 
+    all_positivities = set()
     for k, v in data.items():
         dataset_name, num_hidden, positivity, best_init, skip = k
+        all_positivities.add(positivity)
         if best_init and skip:
             continue
         ax = axes[
@@ -68,19 +70,21 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
         ]
         lbl, col = label_colors[positivity, best_init, skip]
 
-        x = range(v.shape[1])
+        take_every = 50
+        x = range(0, v.shape[1], take_every)
+        v = v[:, ::take_every]
         q0, q1, q2, q3, q4 = np.quantile(v, [0., .25, .5, .75, 1.], axis=0)
 
         ax.fill_between(x, q1, q3, color=col, alpha=.5, zorder=1)
-        ax.plot(q2, color=col, label=lbl, zorder=3)
-        ax.plot(x, q0, "--", q4, "--", color=col, zorder=2)
+        ax.plot(x, q2, color=col, label=lbl, zorder=3)
+        # ax.plot(x, q0, "--", q4, "--", color=col, zorder=2)
 
         if zoom is not None:
             # duplicate plot
             axins = ax.child_axes[0]
             axins.fill_between(x, q1, q3, color=col, alpha=.5, zorder=1)
-            axins.plot(q2, color=col, label=lbl, zorder=3)
-            axins.plot(x, q0, "--", q4, "--", color=col, zorder=2)
+            axins.plot(x, q2, color=col, label=lbl, zorder=3)
+            # axins.plot(x, q0, "--", q4, "--", color=col, zorder=2)
 
             zoom_in_ax = axins if zoom == "in" else ax
             if positivity == "":
@@ -100,11 +104,17 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
     vertical = "lower" if zoom == "out" else "upper"
     horizontal = "right" if zoom is None else "left"
     axes[0, 0].legend(loc=f"{vertical} {horizontal}")
+    axes[0, 0].set_ylabel("training loss")
     for ax, col_title in zip(axes[0, :], dataset_options):
-        ax.set_title(col_title)
+        ax.set_title(col_title, fontdict={"fontsize": "x-large"})
     # for ax, depth in zip(axes[:, 0], depth_options):
     #     ax.text(-.1, .5, f"{depth + 1}-layer net", transform=ax.transAxes,
     #             ha="right", va="center", rotation="vertical")
+    if all_positivities == {"", "icnn"}:
+        for ax in axes.flat:
+            bottom, top = ax.get_ylim()
+            ax.set_ylim(None, top ** .5)
+
     fig.tight_layout()
     return fig
 
@@ -113,7 +123,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument("dir", type=Path, help="directory with results")
-    parser.add_argument("--tb-tag", type=str, default="train/avg_loss",
+    parser.add_argument("--tb-tag", type=str, default="train/batch_loss",
                         help="tensorboard tag to visualise")
     args = parser.parse_args()
 
