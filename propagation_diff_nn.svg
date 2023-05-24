@@ -30,7 +30,7 @@
         <text x="38" y="12.5">0</text>
       </g>
     </g>
-    <!--g>
+    <g>
       <g>
         <path style="fill: lightgray;" d="M 5.091 19.098 L 5.35 19.098 L 5.35 19.044 L 5.091 19.044 L 5.091 19.098 Z M 5.35 19.098 L 5.61 19.098 L 5.61 18.476 L 5.35 18.476 L 5.35 19.098 Z M 5.61 19.098 L 5.87 19.098 L 5.87 16.501 L 5.61 16.501 L 5.61 19.098 Z M 5.87 19.098 L 6.13 19.098 L 6.13 14.9 L 5.87 14.9 L 5.87 19.098 Z M 6.13 19.098 L 6.39 19.098 L 6.39 16.498 L 6.13 16.498 L 6.13 19.098 Z M 6.39 19.098 L 6.65 19.098 L 6.65 18.488 L 6.39 18.488 L 6.39 19.098 Z M 6.65 19.098 L 6.909 19.098 L 6.909 19.04 L 6.65 19.04 L 6.65 19.098 Z"></path>
         <line style="stroke: lightgray; stroke-width: 0.1px;" x1="4" y1="19.098" x2="8" y2="19.098"></line>
@@ -41,7 +41,7 @@
         <rect y="31.5" width="1.5" height="1.5" style="fill: rgb(220, 220, 221);" x="4.5"></rect>
         <rect x="6" y="31.5" width="1.5" height="1.5" style="fill: rgb(179, 3, 38);"></rect>
       </g>
-    </g-->
+    </g>
     <g transform="translate(3, 0)">
       <polyline points="17,34 9,22 17,22 9,28 17,16" class="synapse positive"></polyline>
       <polyline points="17,16 9,22 17,28 9,28 17,34" class="synapse negative"></polyline>
