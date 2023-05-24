@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from convex_modules import *
-from convex_modules import BiConvex, ConvexLayerNorm
+from convex_modules import BiConvex, ConvexLayerNorm, LazyClippedPositivity
 from empirical_init import EmpiricalInit
 from trainer import Trainer, signal_propagation
 from utils import make_deterministic
@@ -18,7 +18,14 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
     nn.init.kaiming_normal_(layer1.weight, nonlinearity="linear")
     nn.init.zeros_(layer1.bias)
 
-    pos_func = ExponentialPositivity() if positivity == "exp" else ClippedPositivity()
+    if positivity == "exp":
+        pos_func = ExponentialPositivity()
+    elif positivity == "clip":
+        pos_func = ClippedPositivity()
+    elif positivity == "icnn":
+        pos_func = LazyClippedPositivity()
+    else:
+        raise ValueError(f"unknown positivity: {positivity}")
 
     name = name.strip().lower()
     if name == "regression":
@@ -119,7 +126,7 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             elif init == "empiric":
                 pass
             elif init is None or init == "default" or (
-                positivity == "exp" and init == "hoedt"
+                (positivity == "exp" or positivity == "icnn") and init == "ours"
             ):
                 pos_func.init_raw_(lay[-1].weight, lay[-1].bias)
             else:
@@ -131,7 +138,7 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             elif init == "empiric":
                 pass
             elif init is None or init == "default" or (
-                positivity == "exp" and init == "hoedt"
+                (positivity == "exp" or positivity == "icnn") and init == "ours"
             ):
                 pos_func.init_raw_(lay.weight, lay.bias)
             else:
@@ -213,7 +220,7 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
             elif init == "empiric":
                 pass
             elif init is None or init == "default" or (
-                positivity == "exp" and init == "hoedt"
+                positivity == "exp" and init == "ours"
             ):
                 pos_func.init_raw_(lay[-2].weight, lay[-2].bias)
             else:
@@ -223,7 +230,7 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
                 nn.init.kaiming_normal_(lay.weight)
                 nn.init.zeros_(lay.bias)
             elif init is None or init == "default" or (
-                positivity == "exp" and init == "hoedt"
+                positivity == "exp" and init == "ours"
             ):
                 pos_func.init_raw_(lay.weight, lay.bias)
             elif init == "empiric":
@@ -249,6 +256,9 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
         if init == "he":
             nn.init.kaiming_normal_(layer2[-1].weight)
             nn.init.zeros_(layer2[-1].bias)
+        elif init == "last-zero":
+            nn.init.zeros_(layer2[-1].weight)
+            nn.init.zeros_(layer2[-1].bias)
         elif init == "empiric":
             lsuv = EmpiricalInit()
             lsuv(model, torch.randn(1024, *in_shape))
@@ -269,8 +279,11 @@ def get_model(name: str, hidden: tuple[int] = (), positivity: str = "exp", init:
         if init == "he":
             nn.init.kaiming_normal_(layer2[-1].weight)
             nn.init.zeros_(layer2[-1].bias)
+        elif init == "last-zero":
+            nn.init.constant_(layer2[-1].weight, -10.)
+            nn.init.zeros_(layer2[-1].bias)
         elif init is None or init == "default" or (
-            positivity == "exp" and init == "hoedt"
+            (positivity == "exp" or positivity == "icnn") and init == "ours"
         ):
             pos_func.init_raw_(layer2[-1].weight, layer2[-1].bias)
         elif init == "empiric":
