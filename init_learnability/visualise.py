@@ -53,9 +53,9 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
         ("exp", True, False): ("exp-ICNN + init", "#0084bb"),
         ("exp", False, True): ("exp-ICNN + skip", plt.cm.tab10(1)),
         ("exp", False, False): ("exp-ICNN", plt.cm.tab10(2)),
-        ("clip", True, False): ("clip-ICNN + init", plt.cm.tab20c(8)),
-        ("clip", False, True): ("clip-ICNN + skip", plt.cm.tab20c(9)),
-        ("clip", False, False): ("clip-ICNN", plt.cm.tab20c(10)),
+        ("clip", True, False): ("clip-ICNN + init", "#0084bb"),
+        ("clip", False, True): ("clip-ICNN + skip", plt.cm.tab10(1)),
+        ("clip", False, False): ("clip-ICNN", plt.cm.tab10(2)),
     }
 
     all_positivities = set()
@@ -70,7 +70,7 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
         ]
         lbl, col = label_colors[positivity, best_init, skip]
 
-        take_every = 50
+        take_every = 50 if v.shape[1] > 5000 else 1
         x = range(0, v.shape[1], take_every)
         v = v[:, ::take_every]
         q0, q1, q2, q3, q4 = np.quantile(v, [0., .25, .5, .75, 1.], axis=0)
@@ -106,7 +106,7 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
     axes[0, 0].legend(loc=f"{vertical} {horizontal}")
     axes[0, 0].set_ylabel("training loss")
     for ax, col_title in zip(axes[0, :], dataset_options):
-        ax.set_title(col_title)
+        ax.set_title(col_title, fontdict={"fontsize": "x-large"})
     if axes.shape[0] > 1:
         for ax, depth in zip(axes[:, 0], depth_options):
             ax.set_ylabel(f"{depth} hidden layers")
