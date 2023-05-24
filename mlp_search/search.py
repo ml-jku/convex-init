@@ -11,7 +11,7 @@ from torchvision.transforms import transforms
 from upsilonconf import save_config
 from tensorboard.backend.event_processing import event_accumulator
 
-from convex_modules import ConvexLinear, LazyClippedPositivity, LinearSkip
+from convex_modules import ConvexLinear, LazyClippedPositivity, LinearSkip, ExponentialPositivity
 from pre_processing import Whiten
 from trainer import Trainer
 from utils import make_deterministic, lecun_init_, he_init_
@@ -110,6 +110,12 @@ def get_model(img_shape: torch.Size, num_classes: int, hidden: tuple = (),
         phi = nn.ReLU()
         mlp = nn.Sequential(nn.Flatten(), layer1, *(
             nn.Sequential(phi, ConvexLinear(n_in, n_out, positivity=LazyClippedPositivity()))
+            for n_in, n_out in zip(widths[:-1], widths[1:])
+        ))
+    elif convex == "exp":
+        phi = nn.ReLU()
+        mlp = nn.Sequential(nn.Flatten(), layer1, *(
+            nn.Sequential(phi, ConvexLinear(n_in, n_out, positivity=ExponentialPositivity()))
             for n_in, n_out in zip(widths[:-1], widths[1:])
         ))
     else:
