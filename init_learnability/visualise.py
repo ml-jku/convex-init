@@ -18,6 +18,7 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
                 hparams.model.num_hidden,
                 hparams.model.positivity or "",
                 hparams.model.better_init,
+                hparams.model.get("rand_bias", False),
                 hparams.model.get("skip", False),
             )
             event_file = next(sub_path.glob("events.out.tfevents.*"))
@@ -46,21 +47,22 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
             axins.set_yscale(ax.get_yscale())
 
     label_colors = {
-        ("", True, False): ("non-convex", "gray"),
-        ("icnn", True, False): ("ICNN + init", "#0084bb"),
-        ("icnn", False, True): ("ICNN + skip", plt.cm.tab10(1)),
-        ("icnn", False, False): ("ICNN", plt.cm.tab10(2)),
-        ("exp", True, False): ("exp-ICNN + init", "#0084bb"),
-        ("exp", False, True): ("exp-ICNN + skip", plt.cm.tab10(1)),
-        ("exp", False, False): ("exp-ICNN", plt.cm.tab10(2)),
-        ("clip", True, False): ("clip-ICNN + init", "#0084bb"),
-        ("clip", False, True): ("clip-ICNN + skip", plt.cm.tab10(1)),
-        ("clip", False, False): ("clip-ICNN", plt.cm.tab10(2)),
+        ("", True, False, False): ("non-convex", "gray"),
+        ("icnn", True, False, False): ("ICNN + init", "#0084bb"),
+        ("icnn", False, False, True): ("ICNN + skip", plt.cm.tab10(1)),
+        ("icnn", False, False, False): ("ICNN", plt.cm.tab10(2)),
+        ("icnn", True, True, False): ("ICNN + bias-init", plt.cm.tab10(3)),
+        ("exp", True, False, False): ("exp-ICNN + init", "#0084bb"),
+        ("exp", False, False, True): ("exp-ICNN + skip", plt.cm.tab10(1)),
+        ("exp", False, False, False): ("exp-ICNN", plt.cm.tab10(2)),
+        ("clip", True, False, False): ("clip-ICNN + init", "#0084bb"),
+        ("clip", False, False, True): ("clip-ICNN + skip", plt.cm.tab10(1)),
+        ("clip", False, False, False): ("clip-ICNN", plt.cm.tab10(2)),
     }
 
     all_positivities = set()
     for k, v in data.items():
-        dataset_name, num_hidden, positivity, best_init, skip = k
+        dataset_name, num_hidden, positivity, best_init, rand_bias, skip = k
         all_positivities.add(positivity)
         if best_init and skip:
             continue
@@ -68,7 +70,7 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
             depth_options.index(num_hidden),
             dataset_options.index(dataset_name)
         ]
-        lbl, col = label_colors[positivity, best_init, skip]
+        lbl, col = label_colors[positivity, best_init, rand_bias, skip]
 
         take_every = 50 if v.shape[1] > 5000 else 1
         x = range(0, v.shape[1], take_every)

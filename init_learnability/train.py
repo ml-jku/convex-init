@@ -18,7 +18,8 @@ from utils import make_deterministic, lecun_init_, he_init_
 
 def get_layer(n_in: int, n_out: int,
               positivity: Positivity = None,
-              better_init: bool = True):
+              better_init: bool = True,
+              rand_bias: bool = False):
     """
     Create fully-connected layer.
 
@@ -33,6 +34,8 @@ def get_layer(n_in: int, n_out: int,
         If ``None``, the layer will be non-convex.
     better_init : bool, optional
         Use better initialisation than the default (He et al., 2015) if possible.
+    rand_bias : bool, optional
+        Use random bias initialisation instead of constants for convex nets.
 
     Returns
     -------
@@ -48,6 +51,8 @@ def get_layer(n_in: int, n_out: int,
     _init = positivity.init_raw_ if better_init else he_init_
     layer = ConvexLinear(n_in, n_out, positivity=positivity)
     _init(layer.weight, layer.bias)
+    if better_init and rand_bias:
+        nn.init.normal_(layer.bias, layer.bias[0].item(), 1)
     return layer
 
 
@@ -55,6 +60,7 @@ def get_model(img_shape: torch.Size, num_classes: int,
               num_hidden: int = 1,
               positivity: str = None,
               better_init: bool = True,
+              rand_bias: bool = False,
               skip: bool = False):
     """
     Create neural network for experiment.
@@ -75,6 +81,8 @@ def get_model(img_shape: torch.Size, num_classes: int,
          - ``""`` or ``None`` results in a NON-convex network
     better_init : bool, optional
         Use better initialisation than the default (He et al., 2015) if possible.
+    rand_bias : bool, optional
+        Use random bias initialisation instead of constants for convex nets.
     skip : bool, optional
         Wrap layer in skip-connection.
 
@@ -103,7 +111,7 @@ def get_model(img_shape: torch.Size, num_classes: int,
 
     phi = nn.ReLU()
     model = nn.Sequential(nn.Flatten(), layer1, *(
-        nn.Sequential(phi, get_layer(n_in, n_out, positivity, better_init))
+        nn.Sequential(phi, get_layer(n_in, n_out, positivity, better_init, rand_bias))
         for n_in, n_out in zip(widths[:-1], widths[1:])
     ))
     if skip:
