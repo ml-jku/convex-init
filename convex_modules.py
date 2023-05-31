@@ -48,15 +48,15 @@ class ExponentialPositivity(Positivity):
         import math
         fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
         pi = math.pi
-        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5
+        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5 + 4 * pi
         mean = math.log(6 * pi) - math.log(
-            fan_in * (4 * pi + tmp) * (10 * pi + tmp)
+            fan_in * tmp * (6 * pi + tmp)
         ) / 2
-        var = math.log(10 * pi + tmp) - math.log(6 * pi)
+        var = math.log(6 * pi + tmp) - math.log(6 * pi)
 
         nn.init.normal_(weight, mean, var ** .5)
         if bias is not None:
-            shift = (3 * fan_in / (4 * pi + tmp)) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
+            shift = (3 * fan_in / tmp) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
             nn.init.constant_(bias, -shift)
 
 
@@ -76,17 +76,17 @@ class LazyClippedPositivity(Positivity):
         import math
         fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
         pi = math.pi
-        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5
+        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5 + 4 * pi
         mean = math.log(6 * pi) - math.log(
-            fan_in * (4 * pi + tmp) * (10 * pi + tmp)
+            fan_in * tmp * (6 * pi + tmp)
         ) / 2
-        var = math.log(10 * pi + tmp) - math.log(6 * pi)
+        var = math.log(6 * pi + tmp) - math.log(6 * pi)
 
         nn.init.normal_(weight, mean, var ** .5)
         with torch.no_grad():
             weight.exp_()
         if bias is not None:
-            shift = (3 * fan_in / (4 * pi + tmp)) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
+            shift = (3 * fan_in / tmp) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
             nn.init.constant_(bias, -shift)
         # nn.init.trunc_normal_(weight, std=0.002)
         # with torch.no_grad():
