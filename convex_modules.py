@@ -66,11 +66,44 @@ class LazyClippedPositivity(Positivity):
     Initialisation should work well for fully-connected networks in theory.
     """
 
+    def __init__(self, var: float = 1.0, corr: float = 0.5, rand_bias: bool = False):
+        self.var = var
+        self.corr = corr
+        self.rand_bias = rand_bias
+
     def __call__(self, weight):
         with torch.no_grad():
             weight.clamp_(0)
 
         return weight
+
+    def corr_func(self, fan_in):
+        import math
+        rho = self.corr
+        # mix_mom = (3 * 3 ** .5 + 2 * pi) / 6
+        mix_mom = (1 - rho ** 2) ** .5 + rho * math.acos(-rho)
+        return fan_in * (math.pi - fan_in + (fan_in - 1) * mix_mom) / (2 * math.pi)
+
+    @torch.no_grad()
+    def init_raw_new_(self, weight, bias):
+        import math
+        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
+        target_mean_sq = self.corr / self.corr_func(fan_in)
+        target_variance = 2. * (1. - self.corr) / fan_in
+        mean = math.log(target_mean_sq) - math.log(target_mean_sq + target_variance) / 2.
+        var = math.log(target_mean_sq + target_variance) - math.log(target_mean_sq)
+        nn.init.normal_(weight, mean, var ** .5).exp_()
+
+        if bias is not None:
+            shift = fan_in * (target_mean_sq * self.var / (2 * math.pi)) ** .5
+            nn.init.constant_(bias, -shift)
+
+            if self.rand_bias:
+                target_variance = 2. * self.corr / fan_in
+                mean = math.log(target_mean_sq) - math.log(target_mean_sq + target_variance) / 2.
+                var = math.log(target_mean_sq + target_variance) - math.log(target_mean_sq)
+                nn.init.normal_(weight, mean, var ** .5).exp_()
+                nn.init.normal_(bias, -shift, self.var).exp_()
 
     def init_raw_(self, weight, bias):
         import math
@@ -87,7 +120,10 @@ class LazyClippedPositivity(Positivity):
             weight.exp_()
         if bias is not None:
             shift = (3 * fan_in / tmp) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
-            nn.init.constant_(bias, -shift)
+            if self.rand_bias:
+                nn.init.normal_(bias, -shift, 1)
+            else:
+                nn.init.constant_(bias, -shift)
         # nn.init.trunc_normal_(weight, std=0.002)
         # with torch.no_grad():
         #     weight.abs_()
