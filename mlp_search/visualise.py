@@ -10,10 +10,19 @@ def retrieve_five_number_summary(path: Path, pattern: str, tb_tag: str = "train/
     results = []
     for p in path.glob(pattern):
         if p.is_dir():
+            config, _ = p.name.rsplit(".", maxsplit=1)
+            search_path = next(p.parent.glob(config + "_*/events.out.tfevents.*"))
+            valid_ea = EventAccumulator(str(search_path))
+            acc_events = valid_ea.Reload().Scalars("valid/acc")
+            early_stop = max(acc_events, key=lambda e: e.value).step
+
             event_path = next(p.glob(f"events.out.tfevents.*"))
             ea = EventAccumulator(str(event_path))
             events = ea.Reload().Scalars(tb_tag)
-            results.append([e.value for e in events])
+            result = [e.value for e in events[:early_stop]]
+            padding = [events[early_stop].value] * (len(events) - early_stop)
+            assert len(result) + len(padding) == len(events)
+            results.append(result + padding)
 
     return np.quantile(results, q=[0., .25, .5, .75, 1.], axis=0)
 
