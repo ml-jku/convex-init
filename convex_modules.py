@@ -1,75 +1,47 @@
-import copy
 from abc import ABC, abstractmethod
 
 import torch
 from torch import nn
 
 __all__ = [
-    "Positivity", "ExponentialPositivity", "ClippedPositivity", "LazyClippedPositivity",
-    "ConvexLinear", "ConvexConv2d",
-    "LinearSkip", "Conv2dSkip",
+    "Positivity", "NoPositivity", "LazyClippedPositivity", "NegExpPositivity", "ExponentialPositivity",
+    "ClippedPositivity", "ConvexLinear", "ConvexConv2d", "LinearSkip", "Conv2dSkip",
 ]
 
 
 class Positivity(ABC):
+    """ Interface for function that makes weights positive. """
 
     @abstractmethod
-    def __call__(self, weight: torch.Tensor) -> torch.Tensor: ...
+    def __call__(self, weight: torch.Tensor) -> torch.Tensor:
+        """ Transform raw weight to positive weight. """
+        ...
 
-    @abstractmethod
-    def init_raw_(self, weight: nn.Parameter, bias: nn.Parameter): ...
+    def inverse_transform(self, pos_weight: torch.Tensor) -> torch.Tensor:
+        """ Transform positive weight to raw weight before transform. """
+        return self.__call__(pos_weight)
 
 
 class NoPositivity(Positivity):
     """
-    Dummy to make it easier to compare convex with non-convex networks.
-    Initialisation is the regular He-init (i.e. excellent for ReLU).
+    Dummy for positivity function.
+
+    This should make it easier to compare ICNNs to regular networks.
     """
 
     def __call__(self, weight):
         return weight
 
-    def init_raw_(self, weight, bias):
-        nn.init.kaiming_normal_(weight, nonlinearity="relu")
-        if bias is not None:
-            nn.init.zeros_(bias)
-
-
-class ExponentialPositivity(Positivity):
-    """
-    Make weights positive by using exponential function.
-    Initialisation should be perfect for fully-connected convex layers (with ReLU).
-    """
-
-    def __call__(self, weight):
-        return torch.exp(weight)
-
-    def init_raw_(self, weight, bias):
-        import math
-        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
-        pi = math.pi
-        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5 + 4 * pi
-        mean = math.log(6 * pi) - math.log(
-            fan_in * tmp * (6 * pi + tmp)
-        ) / 2
-        var = math.log(6 * pi + tmp) - math.log(6 * pi)
-
-        nn.init.normal_(weight, mean, var ** .5)
-        if bias is not None:
-            shift = (3 * fan_in / tmp) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
-            nn.init.constant_(bias, -shift)
-
 
 class LazyClippedPositivity(Positivity):
     """
-    Make weights positive by using clipping after each update.
-    Initialisation should work well for fully-connected networks in theory.
-    """
+    Make weights positive by clipping negative weights after each update.
 
-    def __init__(self, var: float = 1.0, corr: float = 0.5, rand_bias: bool = False):
-        self.var = var
-        self.corr = corr
-        self.rand_bias = rand_bias
+    References
+    ----------
+    Amos et al. (2017)
+        Input-Convex Neural Networks.
+    """
 
     def __call__(self, weight):
         with torch.no_grad():
@@ -77,99 +49,46 @@ class LazyClippedPositivity(Positivity):
 
         return weight
 
-    def corr_func(self, fan_in):
-        import math
-        rho = self.corr
-        # mix_mom = (3 * 3 ** .5 + 2 * pi) / 6
-        mix_mom = (1 - rho ** 2) ** .5 + rho * math.acos(-rho)
-        return fan_in * (math.pi - fan_in + (fan_in - 1) * mix_mom) / (2 * math.pi)
-
-    @torch.no_grad()
-    def init_raw_new_(self, weight, bias):
-        import math
-        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
-        target_mean_sq = self.corr / self.corr_func(fan_in)
-        target_variance = 2. * (1. - self.corr) / fan_in
-        mean = math.log(target_mean_sq) - math.log(target_mean_sq + target_variance) / 2.
-        var = math.log(target_mean_sq + target_variance) - math.log(target_mean_sq)
-        nn.init.normal_(weight, mean, var ** .5).exp_()
-
-        if bias is not None:
-            shift = fan_in * (target_mean_sq * self.var / (2 * math.pi)) ** .5
-            nn.init.constant_(bias, -shift)
-
-            if self.rand_bias:
-                target_variance = 2. * self.corr / fan_in
-                mean = math.log(target_mean_sq) - math.log(target_mean_sq + target_variance) / 2.
-                var = math.log(target_mean_sq + target_variance) - math.log(target_mean_sq)
-                nn.init.normal_(weight, mean, var ** .5).exp_()
-                nn.init.normal_(bias, -shift, self.var).exp_()
-
-    def init_raw_(self, weight, bias):
-        import math
-        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
-        pi = math.pi
-        tmp = fan_in * (2 * pi + 3 * 3 ** .5 - 6) - 3 * 3 ** .5 + 4 * pi
-        mean = math.log(6 * pi) - math.log(
-            fan_in * tmp * (6 * pi + tmp)
-        ) / 2
-        var = math.log(6 * pi + tmp) - math.log(6 * pi)
-
-        nn.init.normal_(weight, mean, var ** .5)
-        with torch.no_grad():
-            weight.exp_()
-        if bias is not None:
-            shift = (3 * fan_in / tmp) ** .5  # fan-in * pos_mean / (2 * pi) ** .5
-            if self.rand_bias:
-                nn.init.normal_(bias, -shift, 1)
-            else:
-                nn.init.constant_(bias, -shift)
-        # nn.init.trunc_normal_(weight, std=0.002)
-        # with torch.no_grad():
-        #     weight.abs_()
-        # if bias is not None:
-        #     nn.init.zeros_(bias)
-
-
-class ClippedPositivity(Positivity):
-    """
-    Make weights positive by using clipping.
-    Initialisation stems from naive derivation and does not work that well.
-    """
-
-    def __call__(self, weight):
-        return torch.relu(weight)
-
-    def init_raw_(self, weight, bias):
-        nn.init.kaiming_uniform_(weight)
-        nn.init.zeros_(bias)
-
-        # modification
-        fan_in = nn.init._calculate_correct_fan(weight, "fan_in")
-        with torch.no_grad():
-            weight *= 4 / (8 - 3 / torch.pi) ** .5
-            bias -= (3 * fan_in / (8 * torch.pi - 3)) ** .5
-
 
 class NegExpPositivity(Positivity):
     """
-    Make weights positive by calling the exponential function on the negative part.
-    Initialisation is arbitrary, but this does not work and has not been tested extensively.
+    Make weights positive by applying exponential function on negative values during forward pass.
+
+    References
+    ----------
+    Sivaprasad et al. (2021)
+        The Curious Case of Convex Neural Networks.
     """
 
     def __call__(self, weight):
         return torch.where(weight < 0, weight.exp(), weight)
 
-    def init_raw_(self, weight, bias):
-        nn.init.kaiming_normal_(weight)
-        if bias is not None:
-            nn.init.zeros_(bias)
+
+class ExponentialPositivity(Positivity):
+    """
+    Make weights positive by applying exponential function during forward pass.
+    """
+
+    def __call__(self, weight):
+        return torch.exp(weight)
+
+    def inverse_transform(self, pos_weight):
+        return torch.log(pos_weight)
+
+
+class ClippedPositivity(Positivity):
+    """
+    Make weights positive by using applying ReLU during forward pass.
+    """
+
+    def __call__(self, weight):
+        return torch.relu(weight)
 
 
 class ConvexLinear(nn.Linear):
     """Linear layer with positive weights."""
 
-    def __init__(self, *args, positivity=None, **kwargs):
+    def __init__(self, *args, positivity: Positivity = None, **kwargs):
         if positivity is None:
             raise TypeError("positivity must be given as kwarg for convex layer")
 
@@ -178,9 +97,6 @@ class ConvexLinear(nn.Linear):
 
     def forward(self, x):
         return torch.nn.functional.linear(x, self.positivity(self.weight), self.bias)
-
-    def reset_parameters(self):
-        self.positivity.init_raw_(self.weight, self.bias)
 
 
 class ConvexConv2d(nn.Conv2d):
@@ -199,12 +115,14 @@ class ConvexConv2d(nn.Conv2d):
             self.stride, self.padding, self.dilation, self.groups
         )
 
-    def reset_parameters(self):
-        self.positivity.init_raw_(self.weight, self.bias)
-
 
 class ConvexLayerNorm(nn.LayerNorm):
-    """LayerNorm with positive weights and tracked statistics."""
+    """
+    LayerNorm with positive weights and tracked statistics.
+
+    Tracking statistics is necessary to make LayerNorm a convex function during inference.
+    During training this module is not a convex function.
+    """
 
     def __init__(self, normalized_shape, positivity: Positivity = None,
                  eps=1e-5, affine=True, device=None, dtype=None,
@@ -237,13 +155,9 @@ class ConvexLayerNorm(nn.LayerNorm):
 
     def reset_parameters(self):
         self.reset_running_stats()
+        raw_val = self.positivity.inverse_transform(torch.ones(1)).item()
+        nn.init.constant_(self.weight, raw_val)
         nn.init.zeros_(self.bias)
-        if isinstance(self.positivity, ExponentialPositivity):
-            nn.init.zeros_(self.weight)
-        elif isinstance(self.positivity, (NegExpPositivity, ClippedPositivity)):
-            nn.init.ones_(self.weight)
-        else:
-            raise ValueError("no init for positivity")
 
     def forward(self, x):
         pos_weight = self.positivity(self.weight)
@@ -274,6 +188,13 @@ class ConvexLayerNorm(nn.LayerNorm):
 
 
 class LinearSkip(nn.Module):
+    """
+    Fully-connected skip-connection with learnable parameters.
+
+    The learnable parameters of this skip-connection must not be positive
+    if they skip to any hidden layer from the input.
+    This is the kind of skip-connection that is commonly used in ICNNs.
+    """
 
     def __init__(self, in_features: int, out_features: int, residual: nn.Module):
         super().__init__()
@@ -284,10 +205,18 @@ class LinearSkip(nn.Module):
         return self.skip(x) + self.residual(x)
 
     def reset_parameters(self):
-        self.skip.reset_parameters()
+        nn.init.kaiming_normal_(self.skip.weight)
+        nn.init.zeros_(self.skip.bias)
 
 
 class Conv2dSkip(nn.Module):
+    """
+    Convolutional skip-connection with learnable parameters.
+
+    The learnable parameters of this skip-connection must not be positive
+    if they skip to any hidden layer from the input.
+    This is the kind of skip-connection that is commonly used in ICNNs.
+    """
 
     def __init__(self, in_channels: int, out_channels: int, residual: nn.Module):
         super().__init__()
@@ -299,14 +228,4 @@ class Conv2dSkip(nn.Module):
 
     def reset_parameters(self):
         nn.init.kaiming_normal_(self.skip.weight)
-
-
-class BiConvex(nn.Module):
-
-    def __init__(self, conv_net: nn.Module):
-        super().__init__()
-        self.conv_net = conv_net
-        self.conc_net = copy.deepcopy(conv_net)
-
-    def forward(self, *args, **kwargs):
-        return self.conv_net(*args, **kwargs) - self.conc_net(*args, **kwargs)
+        nn.init.zeros_(self.skip.bias)
