@@ -3,6 +3,60 @@ import math
 import torch
 
 
+class TraditionalInitialiser:
+    """
+    Initialisation for regular networks using variance scaling.
+    """
+
+    def __init__(self, gain: float = 1.):
+        self.gain = gain
+
+    def __call__(self, weight: torch.Tensor, bias: torch.Tensor):
+        fan_in = torch.nn.init._calculate_correct_fan(weight, "fan_in")
+        weight_dist, bias_dist = self.compute_parameters(fan_in, bias is None)
+        weight_mean_sq, weight_var = weight_dist
+        torch.nn.init.normal_(weight, weight_mean_sq ** .5, weight_var ** .5)
+        if bias is not None:
+            bias_mean, bias_var = bias_dist
+            torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
+
+    def compute_parameters(self, fan_in: int, no_bias: bool = False) -> tuple[
+        tuple[float, float], tuple[float, float] | None
+    ]:
+        return (0., self.gain / fan_in), (0., 0.)
+
+
+class ConvexBiasCorrectionInitialiser:
+    """
+    Initialisation method for input-convex networks that only fixes the shift.
+    """
+
+    def __init__(self, positivity, gain: float = 1.):
+        self.gain = gain
+        self.positivity = positivity
+
+    def __call__(self, weight: torch.Tensor, bias: torch.Tensor):
+        fan_in = torch.nn.init._calculate_correct_fan(weight, "fan_in")
+        weight_dist, bias_dist = self.compute_parameters(fan_in, bias is None)
+        weight_mean_sq, weight_var = weight_dist
+        torch.nn.init.normal_(weight, weight_mean_sq ** .5, weight_var ** .5)
+        if bias is not None:
+            bias_mean, bias_var = bias_dist
+            torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
+
+    def compute_parameters(self, fan_in: int, no_bias: bool = False) -> tuple[
+        tuple[float, float], tuple[float, float] | None
+    ]:
+        weight_var = self.gain / fan_in
+        if no_bias:
+            return (0., weight_var), None
+
+        w_tmp = self.positivity(torch.randn(10_000) * weight_var ** .5)
+        shift = fan_in * w_tmp.mean() / (2 * torch.pi) ** .5
+        return (0., weight_var), (-shift, 0.)
+
+
+
 class ConvexInitialiser:
     """
     Initialisation method for input-convex networks.
@@ -77,7 +131,7 @@ class ConvexInitialiser:
         self.bias_noise = bias_noise
         self.relu_scale = 2. / (1. + alpha ** 2)
 
-    def __call__(self, weight, bias):
+    def __call__(self, weight: torch.Tensor, bias: torch.Tensor):
         fan_in = torch.nn.init._calculate_correct_fan(weight, "fan_in")
         weight_dist, bias_dist = self.compute_parameters(fan_in, bias is None)
         weight_mean_sq, weight_var = weight_dist
