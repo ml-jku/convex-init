@@ -11,49 +11,10 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
 from upsilonconf import Configuration, load_config, save_config
 
+from convex_init import TraditionalInitialiser, ConvexInitialiser, ConvexBiasCorrectionInitialiser
 from convex_modules import *
-from trainer import signal_propagation, Trainer
-from utils import make_deterministic, lecun_init_, he_init_
-
-
-def get_layer(n_in: int, n_out: int,
-              positivity: Positivity = None,
-              better_init: bool = True,
-              rand_bias: bool = False):
-    """
-    Create fully-connected layer.
-
-    Parameters
-    ----------
-    n_in : int
-        The number of input features.
-    n_out : int
-        The number of output features.
-    positivity : Positivity, optional
-        The positivity object to use for the convex layer.
-        If ``None``, the layer will be non-convex.
-    better_init : bool, optional
-        Use better initialisation than the default (He et al., 2015) if possible.
-    rand_bias : bool, optional
-        Use random bias initialisation instead of constants for convex nets.
-
-    Returns
-    -------
-    layer : torch.nn.Module
-        A fully-connected network layer (without activation function).
-    """
-    if positivity is None:
-        layer = nn.Linear(n_in, n_out)
-        if better_init:
-            he_init_(layer.weight, layer.bias)
-        return layer
-
-    _init = positivity.init_raw_ if better_init else he_init_
-    layer = ConvexLinear(n_in, n_out, positivity=positivity)
-    _init(layer.weight, layer.bias)
-    if better_init and rand_bias:
-        nn.init.normal_(layer.bias, layer.bias[0].item(), 1)
-    return layer
+from trainer import Trainer
+from utils import make_deterministic
 
 
 def get_model(img_shape: torch.Size, num_classes: int,
@@ -61,7 +22,9 @@ def get_model(img_shape: torch.Size, num_classes: int,
               positivity: str = None,
               better_init: bool = True,
               rand_bias: bool = False,
-              skip: bool = False):
+              corr: float = .5,
+              skip: bool = False,
+              bias_init_only: bool = False):
     """
     Create neural network for experiment.
 
@@ -80,11 +43,16 @@ def get_model(img_shape: torch.Size, num_classes: int,
          - ``"icnn"`` clips values at zero after each update
          - ``""`` or ``None`` results in a NON-convex network
     better_init : bool, optional
-        Use better initialisation than the default (He et al., 2015) if possible.
+        Use principled initialisation for convex layers instead of default (He et al., 2015).
     rand_bias : bool, optional
         Use random bias initialisation instead of constants for convex nets.
+    corr : float, optional
+        The correlation fixed point to aim for in the better initialisation.
     skip : bool, optional
         Wrap layer in skip-connection.
+    bias_init_only: bool, optional
+        Only apply principled initialisation for bias parameters.
+        Weight parameters are initialised using the default (He et al., 2015) initialisation.
 
     Returns
     -------
@@ -94,12 +62,8 @@ def get_model(img_shape: torch.Size, num_classes: int,
     width = img_shape.numel()
     widths = (width, ) * num_hidden + (num_classes, )
 
-    # first layer is special
-    layer1 = nn.Linear(width, widths[0])
-    lecun_init_(layer1.weight, layer1.bias)
-
-    if positivity == "":
-        positivity = None
+    if positivity is None or positivity == "":
+        positivity = NoPositivity()
     elif positivity == "exp":
         positivity = ExponentialPositivity()
     elif positivity == "clip":
@@ -109,18 +73,35 @@ def get_model(img_shape: torch.Size, num_classes: int,
     elif positivity is not None:
         raise ValueError(f"unknown value for positivity: '{positivity}'")
 
+    # first layer can be regular
+    layer1 = nn.Linear(width, widths[0])
     phi = nn.ReLU()
-    model = nn.Sequential(nn.Flatten(), layer1, *(
-        nn.Sequential(phi, get_layer(n_in, n_out, positivity, better_init, rand_bias))
+    layers = [layer1, *(
+        nn.Sequential(phi, ConvexLinear(n_in, n_out, positivity=positivity))
         for n_in, n_out in zip(widths[:-1], widths[1:])
-    ))
-    if skip:
-        new_model = LinearSkip(width, widths[1], model[1:3])
-        for layer, num_out in zip(model[3:], widths[2:]):
-            new_model = LinearSkip(width, num_out, nn.Sequential(new_model, layer))
-        model = nn.Sequential(model[0], new_model)
+    )]
 
-    return model
+    # initialisation
+    lecun_init = TraditionalInitialiser(gain=1.)
+    if better_init and not isinstance(positivity, NoPositivity):
+        if bias_init_only:
+            init = ConvexBiasCorrectionInitialiser(positivity, gain=2.)
+        else:
+            init = ConvexInitialiser(var=1., corr=corr, bias_noise=0.5 if rand_bias else 0.)
+    else:
+        init = TraditionalInitialiser(gain=2.)
+
+    lecun_init(layer1.weight, layer1.bias)
+    for _, convex_layer in layers[1:]:
+        init(convex_layer.weight, convex_layer.bias)
+
+    if skip:
+        skipped = LinearSkip(width, widths[1], nn.Sequential(*layers[:2]))
+        for layer, num_out in zip(layers[2:], widths[2:]):
+            skipped = LinearSkip(width, num_out, nn.Sequential(skipped, layer))
+        layers = [skipped]
+
+    return nn.Sequential(nn.Flatten(), *layers)
 
 
 def get_data(name: str, root: str, train_split: float = 0.9):
