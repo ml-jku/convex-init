@@ -10,9 +10,11 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
 
     path = Path(path)
     results = {}
+    counter = 0
     for sub_path in path.iterdir():
         hparams = load_config(sub_path / "config.yaml")
-        if filters is None or all(str(v) == str(hparams[k]) for k, v in filters.items()):
+        if filters is None or all(str(v) == str(hparams.get(k)) for k, v in filters.items()):
+            counter += 1
             key = (
                 hparams.data.name.upper(),
                 hparams.model.num_hidden,
@@ -20,6 +22,8 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
                 hparams.model.better_init,
                 hparams.model.get("rand_bias", False),
                 hparams.model.get("skip", False),
+                hparams.model.get("bias_init_only", False),
+                hparams.model.get("corr", 0.5)
             )
             event_file = next(sub_path.glob("events.out.tfevents.*"))
             results.setdefault(key, []).append([
@@ -27,10 +31,12 @@ def collect_results(path: str, filters: dict = None, tag: str = "train/avg_loss"
                 for s in EventAccumulator(str(event_file)).Reload().Scalars(tag)
             ])
 
+    print(f"read {counter:d} event files")
+    assert counter // 10 == len(results), {k: len(v) for k, v in results.items()}
     return {k: np.array(results[k]) for k in sorted(results.keys())}
 
 
-def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
+def visualise_results(data: dict[tuple[str, int, str, bool, bool, bool, bool, float], np.ndarray],
                       scale: str = "log", zoom: str = "in"):
     dataset_options = tuple(sorted({k[0] for k in data.keys()}, key=len))
     depth_options = tuple(sorted({k[1] for k in data.keys()}))
@@ -47,22 +53,23 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
             axins.set_yscale(ax.get_yscale())
 
     label_colors = {
-        ("", True, False, False): ("non-convex", "gray"),
-        ("icnn", True, False, False): ("ICNN + init", "#0084bb"),
-        ("icnn", False, False, True): ("ICNN + skip", plt.cm.tab10(1)),
-        ("icnn", False, False, False): ("ICNN", plt.cm.tab10(2)),
-        ("icnn", True, True, False): ("ICNN + bias-init", plt.cm.tab10(3)),
-        ("exp", True, False, False): ("exp-ICNN + init", "#0084bb"),
-        ("exp", False, False, True): ("exp-ICNN + skip", plt.cm.tab10(1)),
-        ("exp", False, False, False): ("exp-ICNN", plt.cm.tab10(2)),
-        ("clip", True, False, False): ("clip-ICNN + init", "#0084bb"),
-        ("clip", False, False, True): ("clip-ICNN + skip", plt.cm.tab10(1)),
-        ("clip", False, False, False): ("clip-ICNN", plt.cm.tab10(2)),
+        ("", True, False, False, False): ("non-convex", "gray"),
+        ("icnn", True, False, False, False): ("ICNN + init", "#0084bb"),
+        ("icnn", False, False, True, False): ("ICNN + skip", plt.cm.tab10(1)),
+        ("icnn", False, False, False, False): ("ICNN", plt.cm.tab10(2)),
+        ("icnn", True, True, False, False): ("ICNN + bias-init", plt.cm.tab10(3)),
+        ("icnn", True, False, False, True): ("ICNN + init (bias-only)", plt.cm.tab10(4)),
+        ("exp", True, False, False, False): ("exp-ICNN + init", "#0084bb"),
+        ("exp", False, False, True, False): ("exp-ICNN + skip", plt.cm.tab10(1)),
+        ("exp", False, False, False, False): ("exp-ICNN", plt.cm.tab10(2)),
+        ("clip", True, False, False, False): ("clip-ICNN + init", "#0084bb"),
+        ("clip", False, False, True, False): ("clip-ICNN + skip", plt.cm.tab10(1)),
+        ("clip", False, False, False, False): ("clip-ICNN", plt.cm.tab10(2)),
     }
 
     all_positivities = set()
     for k, v in data.items():
-        dataset_name, num_hidden, positivity, best_init, rand_bias, skip = k
+        dataset_name, num_hidden, positivity, best_init, rand_bias, skip, bias_init_only, corr = k
         all_positivities.add(positivity)
         if best_init and skip:
             continue
@@ -70,7 +77,10 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
             depth_options.index(num_hidden),
             dataset_options.index(dataset_name)
         ]
-        lbl, col = label_colors[positivity, best_init, rand_bias, skip]
+        lbl, col = label_colors[positivity, best_init, rand_bias, skip, bias_init_only]
+        if corr != 0.5:
+            col = plt.cm.tab10(5) if corr > 0.5 else plt.cm.tab10(6)
+            lbl = f"{lbl} (corr: {corr:.1f})"
 
         take_every = 50 if v.shape[1] > 5000 else 1
         x = range(0, v.shape[1], take_every)
@@ -115,7 +125,7 @@ def visualise_results(data: dict[tuple[str, int, str, bool, bool], np.ndarray],
     # for ax, depth in zip(axes[:, 0], depth_options):
     #     ax.text(-.1, .5, f"{depth + 1}-layer net", transform=ax.transAxes,
     #             ha="right", va="center", rotation="vertical")
-    if all_positivities == {"", "icnn"}:
+    if zoom is not None and all_positivities == {"", "icnn"}:
         for ax in axes.flat:
             bottom, top = ax.get_ylim()
             ax.set_ylim(None, top ** .5)
