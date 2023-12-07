@@ -1,9 +1,14 @@
+"""
+This script produces plots that form the base for Figure 1 and Figure 6.
+"""
+
 import math
 
 import torch
 from torch import nn
 from matplotlib import pyplot as plt, gridspec
 
+from convex_init import TraditionalInitialiser, ConvexInitialiser
 from convex_modules import ConvexLinear, LazyClippedPositivity, LinearSkip
 
 
@@ -104,6 +109,7 @@ def plot_moments(data, raw: bool = False, mini: bool = False, axes=None):
 
 if __name__ == "__main__":
     x = torch.randn(1024, 200)
+
     net = torch.nn.Sequential(
         nn.Linear(200, 400),
         nn.Sequential(nn.ReLU(), nn.Linear(400, 300)),
@@ -112,12 +118,11 @@ if __name__ == "__main__":
     )
 
     # regular init
-    with torch.no_grad():
-        nn.init.kaiming_uniform_(net[0].weight, nonlinearity="linear")
-        nn.init.zeros_(net[0].bias)
-        for layer in net[1:]:
-            nn.init.kaiming_uniform_(layer[1].weight, nonlinearity="relu")
-            nn.init.zeros_(layer[1].bias)
+    init1 = TraditionalInitialiser()
+    initX = TraditionalInitialiser(gain=2.)
+    init1(net[0].weight, net[0].bias)
+    for layer in net[1:]:
+        initX(layer[1].weight, layer[1].bias)
 
     with torch.no_grad():
         s, = nn_results = [x]
@@ -164,11 +169,10 @@ if __name__ == "__main__":
     )
 
     # principled init
-    with torch.no_grad():
-        net[0].weight -= net[0].weight.mean(1, keepdims=True)
-        net[0].weight /= (200 * net[0].weight.var(1, keepdims=True)) ** .5
+    initX = ConvexInitialiser()
+    init1(net[0].weight, net[0].bias)
     for layer in net[1:]:
-        layer[1].reset_parameters()
+        initX(layer[1].weight, layer[1].bias)
 
     with torch.no_grad():
         s, = ours_results = [x]
@@ -183,6 +187,27 @@ if __name__ == "__main__":
         plot_moments(res, raw=True, mini=True, axes=axes)
 
     fig.savefig("propagation_icnn_init.svg")
+    fig.show()
+
+    # icnn rbias init
+    initX = ConvexInitialiser(bias_noise=0.5)
+    init1(net[0].weight, net[0].bias)
+    for layer in net[1:]:
+        initX(layer[1].weight, layer[1].bias)
+
+    with torch.no_grad():
+        s, = icnn_results = [x]
+        for layer in net:
+            s = layer(s)
+            icnn_results.append(s)
+
+    size = (3, len(icnn_results) - 1)
+    fig, axes = plt.subplots(*size, figsize=(size[1] * 6.4, size[0] * 4.8))
+    axes[0, 0].get_shared_y_axes().join(*axes[0])
+    for res, axes in zip(icnn_results, axes.T):
+        plot_moments(res, raw=True, mini=True, axes=axes)
+
+    fig.savefig("propagation_icnn_rbias.svg")
     fig.show()
 
     # bonus visualisation
@@ -223,16 +248,3 @@ if __name__ == "__main__":
 
     fig.savefig("propagation_icnn_skip.svg")
     fig.show()
-
-    # size = (1, len(nn_results) - 1)
-    # fig, axes = plt.subplots(*size, sharey="row",
-    #                          figsize=(size[1] * 6.4, 4.8))
-    # for nn_res, icnn_res, skip_res, ours_res, ax in zip(
-    #         nn_results, icnn_results, skip_results, ours_results, axes.T
-    # ):
-    #     ax.hist(nn_res.ravel(), color="lightgray", density=True)
-    #     ax.hist(icnn_res.ravel(), color=plt.cm.tab20c(2), density=True)
-    #     ax.hist(skip_res.ravel(), color=plt.cm.tab20(1), density=True)
-    #     ax.hist(ours_res.ravel(), color=plt.cm.tab20(0), density=True)
-    # fig.show()
-
