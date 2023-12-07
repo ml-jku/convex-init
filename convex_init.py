@@ -29,17 +29,26 @@ class TraditionalInitialiser:
 class ConvexBiasCorrectionInitialiser:
     """
     Initialisation method for input-convex networks that only fixes the shift.
+
+    Notes
+    -----
+    This module does not allow to reproduce Figure 8 in the appendix.
+    The original experiment had a bug that used convex init instead of the PyTorch default.
+    As a result, using only bias initialisation is as bad as the PyTorch default!
     """
 
     def __init__(self, positivity, gain: float = 1.):
-        self.gain = gain
+        # pytorch default init uses non-standard scaling
+        self.gain = gain / 3.
         self.positivity = positivity
 
     def __call__(self, weight: torch.Tensor, bias: torch.Tensor):
         fan_in = torch.nn.init._calculate_correct_fan(weight, "fan_in")
         weight_dist, bias_dist = self.compute_parameters(fan_in, bias is None)
         weight_mean_sq, weight_var = weight_dist
-        torch.nn.init.normal_(weight, weight_mean_sq ** .5, weight_var ** .5)
+        # pytorch default init uses uniform distribution
+        offset, dist = weight_mean_sq ** .5, (3. * weight_var) ** .5
+        torch.nn.init.uniform_(weight, offset - dist, offset + dist)
         if bias is not None:
             bias_mean, bias_var = bias_dist
             torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
@@ -51,10 +60,10 @@ class ConvexBiasCorrectionInitialiser:
         if no_bias:
             return (0., weight_var), None
 
-        w_tmp = self.positivity(torch.randn(10_000) * weight_var ** .5)
+        # pytorch default init uses uniform distribution
+        w_tmp = self.positivity((2. * torch.rand(10_000) - 1.) * (3. * weight_var) ** .5)
         shift = fan_in * w_tmp.mean() / (2 * torch.pi) ** .5
         return (0., weight_var), (-shift, 0.)
-
 
 
 class ConvexInitialiser:
