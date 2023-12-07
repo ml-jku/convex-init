@@ -15,7 +15,7 @@ from convex_modules import ConvexLinear, LazyClippedPositivity, LinearSkip, Expo
 from convex_init import TraditionalInitialiser, ConvexInitialiser
 from pre_processing import Whiten
 from trainer import Trainer
-from utils import make_deterministic, lecun_init_, he_init_
+from utils import make_deterministic
 
 
 def get_data(name: str, root: str, pre_process: str = "normal", train_split: float = 0.9):
