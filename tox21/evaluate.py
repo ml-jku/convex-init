@@ -26,7 +26,7 @@ def run(log_dir: Path, sys_config: Configuration):
     for k, auc in metrics.items():
         auc(logits, y)
 
-    return {k: auc.value for k, auc in metrics.items()}
+    return {"seed": hparams.seed} | {k: auc.value for k, auc in metrics.items()}
 
 
 if __name__ == "__main__":
@@ -38,15 +38,22 @@ if __name__ == "__main__":
     result_path = Path("results", "tox21", args.stamp)
 
     results = {}
-    for rep in result_path.parent.glob(".".join([args.stamp, "*"])):
+    for rep in result_path.parent.glob(".".join([args.stamp, "?"])):
         rep_results = run(rep, sys_config)
         for k, v in rep_results.items():
             results.setdefault(k, []).append(v)
+
+    with open(result_path.with_suffix(".csv"), "w") as fp:
+        seeds = results.pop("seed")
+        keys, vals = zip(*results.items())
+        print("seed," + ",".join(keys), file=fp)
+        for seed, *res in zip(seeds, *vals):
+            print(f"{seed:d}," + ",".join([f"{v:.4f}" for v in res]), file=fp)
 
     averages = []
     for k, v in results.items():
         low, mid, high = 100 * np.quantile(v, [0.05, 0.5, 0.95])
         averages.append(np.mean(v))
-        print(f"{k:10s} {mid:5.2f}({low:5.2f} - {high:5.2f}) +- {max(high - mid, mid - low):5.2f}")
+        print(r"${:05.2f} \pm {:04.2f}\%$ & ".format(mid, max(high - mid, mid - low)), end="")
     low, mid, high = 100 * np.quantile(averages, [0.05, 0.5, 0.95])
-    print(f"{'avg_auc':10s} {mid:5.2f}({low:5.2f} - {high:5.2f}) +- {max(high - mid, mid - low):5.2f}")
+    print(r"${:05.2f} \pm {:04.2f}\%$".format(mid, max(high - mid, mid - low)))

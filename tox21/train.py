@@ -7,12 +7,20 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torch.utils.tensorboard import SummaryWriter
 from upsilonconf import Configuration, save_config
 
-from convex_modules import ConvexLinear, ExponentialPositivity, LazyClippedPositivity, LinearSkip
+from convex_init import ConvexInitialiser, TraditionalInitialiser
+from convex_modules import ConvexLinear, ExponentialPositivity, LazyClippedPositivity, LinearSkip, NoPositivity
 from trainer import signal_propagation, Trainer
-from utils import he_init_, make_deterministic
+from utils import make_deterministic
 
 
 class Tox21Original(Dataset):
+    """
+    Tox21 dataset as it was provided for the DeepTox challenge.
+
+    This data can be downloaded from:
+    http://bioinf.jku.at/research/DeepTox/tox21.html
+    """
+
     def __init__(self, root: str, split: str = "train", normalize: bool = True):
         self.root = Path(root).expanduser()
         path = self.root / "tox21_original"
@@ -46,6 +54,9 @@ class Tox21Original(Dataset):
 
 
 class MaskedBCEWithLogitsLoss(nn.BCEWithLogitsLoss):
+    """
+    Binary cross-entropy loss that masks out predictions for NaN values in the target tensor.
+    """
 
     def forward(self, input, target):
         mask = torch.isnan(target)
@@ -68,45 +79,30 @@ def get_model(name: str, num_hidden: int = 128, bad_init: bool = False, skip: bo
     num_in, num_out = 512, 12
     if name == "logreg":
         return nn.Linear(num_in, num_out)
-    elif name == "fc":
-        model = nn.Sequential(
-            nn.Dropout(p=.7),
-            nn.Linear(num_in, num_hidden),
-            nn.ReLU(),
-            nn.Dropout(p=.5),
-            nn.Linear(num_hidden, num_hidden),
-            nn.ReLU(),
-            nn.Dropout(p=.5),
-            nn.Linear(num_hidden, num_out),
-        )
+
+    if name == "fc":
+        positivity = NoPositivity()
     elif name == "convex":
-        model = nn.Sequential(
-            nn.Dropout(p=.7),
-            nn.Linear(num_in, num_hidden),
-            nn.ReLU(),
-            nn.Dropout(p=.5),
-            ConvexLinear(num_hidden, num_hidden, positivity=ExponentialPositivity()),
-            nn.ReLU(),
-            nn.Dropout(p=.5),
-            ConvexLinear(num_hidden, num_out, positivity=ExponentialPositivity()),
-        )
+        positivity = ExponentialPositivity()
     elif name == "icnn":
-        model = nn.Sequential(
-            nn.Dropout(p=.7),
-            nn.Linear(num_in, num_hidden),
-            nn.ReLU(),
-            nn.Dropout(p=.5),
-            ConvexLinear(num_hidden, num_hidden, positivity=LazyClippedPositivity()),
-            nn.ReLU(),
-            nn.Dropout(p=.5),
-            ConvexLinear(num_hidden, num_out, positivity=LazyClippedPositivity()),
-        )
+        positivity = LazyClippedPositivity()
     else:
         raise ValueError(f"unknown model name: {name}")
 
-    if bad_init:
-        for idx in [4, 7]:
-            he_init_(model[idx].weight, model[idx].bias)
+    model = nn.Sequential(
+        nn.Dropout(p=.7),
+        nn.Linear(num_in, num_hidden),
+        nn.ReLU(),
+        nn.Dropout(p=.5),
+        ConvexLinear(num_hidden, num_hidden, positivity=positivity),
+        nn.ReLU(),
+        nn.Dropout(p=.5),
+        ConvexLinear(num_hidden, num_out, positivity=positivity),
+    )
+
+    init = TraditionalInitialiser(gain=2.) if bad_init else ConvexInitialiser()
+    for idx in [4, 7]:
+        init(model[idx].weight, model[idx].bias)
 
     if skip:
         new_model = LinearSkip(num_in, num_hidden, model[1:5])
@@ -117,6 +113,12 @@ def get_model(name: str, num_hidden: int = 128, bad_init: bool = False, skip: bo
 
 
 def run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
+    """
+    Train Tox21 models for hyperparameter selection.
+
+    The model is trained on the training data and validation metrics are logged to tensorboard.
+    The weights of the model are never stored in this function
+    """
     log_dir = Path(log_dir)
     make_deterministic(hparams.seed)
 
@@ -158,6 +160,12 @@ def run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
 
 
 def final_run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
+    """
+    Train final Tox21 prediction model.
+
+    The model is trained on the concatenation of training and validation data.
+    Validation metrics are not logged, but the weights of the model will be stored (in a file).
+    """
     log_dir = Path(log_dir)
     make_deterministic(hparams.seed)
 
