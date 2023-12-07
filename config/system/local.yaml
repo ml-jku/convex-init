@@ -1,0 +1,3 @@
+data_root: ~/.pytorch
+num_workers: 4
+device: cuda
