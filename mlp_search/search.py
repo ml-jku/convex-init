@@ -11,7 +11,8 @@ from torchvision.transforms import transforms
 from upsilonconf import save_config
 from tensorboard.backend.event_processing import event_accumulator
 
-from convex_modules import ConvexLinear, LazyClippedPositivity, LinearSkip, ExponentialPositivity
+from convex_modules import ConvexLinear, LazyClippedPositivity, LinearSkip, ExponentialPositivity, NoPositivity
+from convex_init import TraditionalInitialiser, ConvexInitialiser
 from pre_processing import Whiten
 from trainer import Trainer
 from utils import make_deterministic, lecun_init_, he_init_
@@ -96,45 +97,36 @@ def get_model(img_shape: torch.Size, num_classes: int, hidden: tuple = (),
     width = img_shape.numel()
     widths = (width, *hidden, num_classes)
 
-    # first layer is special
-    layer1 = nn.Linear(width, widths[0])
-    lecun_init_(layer1.weight, layer1.bias)
-
     if convex is None or convex == "":
-        phi = nn.ReLU()
-        mlp = nn.Sequential(nn.Flatten(), layer1, *(
-            nn.Sequential(phi, nn.Linear(n_in, n_out))
-            for n_in, n_out in zip(widths[:-1], widths[1:])
-        ))
+        positivity = NoPositivity()
     elif convex == "icnn":
-        phi = nn.ReLU()
-        mlp = nn.Sequential(nn.Flatten(), layer1, *(
-            nn.Sequential(phi, ConvexLinear(n_in, n_out, positivity=LazyClippedPositivity()))
-            for n_in, n_out in zip(widths[:-1], widths[1:])
-        ))
+        positivity = LazyClippedPositivity()
     elif convex == "exp":
-        phi = nn.ReLU()
-        mlp = nn.Sequential(nn.Flatten(), layer1, *(
-            nn.Sequential(phi, ConvexLinear(n_in, n_out, positivity=ExponentialPositivity()))
-            for n_in, n_out in zip(widths[:-1], widths[1:])
-        ))
+        positivity = ExponentialPositivity()
     else:
         raise ValueError()
 
-    if convex and fix_init:
-        for seq in mlp[2:]:
-            seq[-1].reset_parameters()
-    else:
-        for seq in mlp[2:]:
-            he_init_(seq[-1].weight, seq[-1].bias)
+    # first layer is special
+    layer1 = nn.Linear(width, widths[0])
+    phi = nn.ReLU()
+    layers = [layer1, *(
+        nn.Sequential(phi, ConvexLinear(n_in, n_out, positivity=positivity))
+        for n_in, n_out in zip(widths[:-1], widths[1:])
+    )]
+
+    lecun_init = TraditionalInitialiser()
+    lecun_init(layer1.weight, layer1.bias)
+    init = ConvexInitialiser() if (convex and fix_init) else TraditionalInitialiser(gain=2.)
+    for seq in layers[1:]:
+        init(seq[-1].weight, seq[-1].bias)
 
     if skip:
-        new_model = LinearSkip(width, widths[1], mlp[1:3])
-        for layer, num_out in zip(mlp[3:], widths[2:]):
-            new_model = LinearSkip(width, num_out, nn.Sequential(new_model, layer))
-        mlp = nn.Sequential(mlp[0], new_model)
+        skipped = LinearSkip(width, widths[1], nn.Sequential(*layers[:2]))
+        for layer, num_out in zip(layers[2:], widths[2:]):
+            skipped = LinearSkip(width, num_out, nn.Sequential(skipped, layer))
+        layers = [skipped]
 
-    return mlp
+    return nn.Sequential(nn.Flatten(), *layers)
 
 
 def run(hparams, sys_config):

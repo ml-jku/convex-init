@@ -14,7 +14,7 @@ from upsilonconf import save_config
 from mlp_search.search import get_model
 from pre_processing import Whiten
 from trainer import Trainer
-from utils import make_deterministic, lecun_init_, he_init_
+from utils import make_deterministic
 
 
 def get_data(name: str, root: str, pre_process: str = "normal"):
