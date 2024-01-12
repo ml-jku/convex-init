@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import copy
 
 import torch
 from torch import nn
@@ -229,3 +230,22 @@ class Conv2dSkip(nn.Module):
     def reset_parameters(self):
         nn.init.kaiming_normal_(self.skip.weight)
         nn.init.zeros_(self.skip.bias)
+
+
+class BiConvex(nn.Module):
+    """
+    Combination of two convex networks for learning more general functions.
+
+    References
+    ----------
+    Sankaranarayanan and Rengaswamy (2022)
+        CDiNN – convex difference neural networks.
+    """
+
+    def __init__(self, conv_net: nn.Module):
+        super().__init__()
+        self.conv_net = conv_net
+        self.conc_net = copy.deepcopy(conv_net)
+
+    def forward(self, *args, **kwargs):
+        return self.conv_net(*args, **kwargs) - self.conc_net(*args, **kwargs)
