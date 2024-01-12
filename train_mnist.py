@@ -50,8 +50,8 @@ if __name__ == "__main__":
     from torch.utils.data import DataLoader, random_split
     from torch.utils.tensorboard import SummaryWriter
 
-    config = load_config("config")
-    hparams, sys_config = config.hparams, config.system
+    hparams = load_config("config/hparams/mnist.yaml")
+    sys_config = load_config("config/system/local.yaml")
     log_dir = time.strftime("runs/mnist/%y%j-%H%M%S")
     make_deterministic(hparams.seed)
 

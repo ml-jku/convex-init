@@ -1,0 +1,10 @@
+seed: 1805
+epochs: 10
+batch_size: 64
+model:
+  name: mlp
+  hidden: [784, 784]
+  positivity: exp
+  init: ours
+adam:
+  lr: 1e-3

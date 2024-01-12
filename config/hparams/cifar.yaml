@@ -1,0 +1,11 @@
+seed: 2023
+epochs: 25
+batch_size: 128
+model:
+  name: convex-mlp
+  hidden: [800, 800, 800]
+  positivity: exp
+  init: ours
+adam:
+  lr: 1e-3
+  weight_decay: 0.
