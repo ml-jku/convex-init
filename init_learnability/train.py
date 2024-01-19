@@ -148,8 +148,9 @@ def get_data(name: str, root: str, train_split: float = 0.9):
     return random_split(data, [num_train, len(data) - num_train]), shapes
 
 
-def run(hparams: Configuration, sys_config: Configuration, log_dir: Path):
+def run(hparams: Configuration, sys_config: Configuration, log_dir: Path | str):
     """ Run experiment with given parameters. """
+    log_dir = Path(log_dir)
     make_deterministic(hparams.seed)
 
     # data

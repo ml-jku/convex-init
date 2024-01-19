@@ -140,6 +140,8 @@ if __name__ == "__main__":
     parser.add_argument("dir", type=Path, help="directory with results")
     parser.add_argument("--convexity", type=str, default=None,
                         choices=["icnn", "exp", "clip"])
+    parser.add_argument("--depth", type=int, default=None,
+                        choices=[3, 5, 7])
     parser.add_argument("--tb-tag", type=str, default="train/batch_loss",
                         help="tensorboard tag to visualise")
     args = parser.parse_args()
@@ -147,6 +149,8 @@ if __name__ == "__main__":
     filters = {}
     if args.convexity is not None:
         filters["model.positivity"] = args.convexity
+    if args.depth is not None:
+        filters["model.num_hidden"] = args.depth
 
     plot_scale = "linear" if "acc" in args.tb_tag else "log"
     ref_data = collect_results(args.dir, tag=args.tb_tag, filters={"model.positivity": "None"})
