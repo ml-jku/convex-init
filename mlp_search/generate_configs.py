@@ -64,6 +64,8 @@ if __name__ == "__main__":
         "icnn": {"convex": "icnn", "fix_init": False, "skip": False},
         "skip": {"convex": "icnn", "fix_init": False, "skip": True},
         "ours": {"convex": "icnn", "fix_init": True, "skip": False},
+        "exp1": {"convex": "exp", "fix_init": False, "skip": False},
+        "exp2": {"convex": "exp", "fix_init": True, "skip": False}
     }
 
     for model_prefix, model_conf in models.items():

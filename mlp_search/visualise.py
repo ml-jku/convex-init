@@ -43,131 +43,83 @@ def plot_five_number_summary(summary, label=None, color=None, ax=None):
     return ax
 
 
-def generate_mnist_plot():
+def generate_mnist_plot(identifiers: list[str], id_plot_kwargs: dict[str, tuple]):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8.4, 4.2))
     result_path = Path("results", "mlp_search")
 
-    # non-convex:      mnist071
-    # exp-icnn:        convex1_mnist023
-    # exp-icnn + init: convex_mnist066
-    # icnn:            icnn1_mnist0?? (icnn_mnist047)
-    # icnn + init:     icnn2_mnist052
+    # non-convex:      nn_mnist071
+    # exp-icnn:        exp1_mnist023
+    # exp-icnn + init: exp2_mnist066
+    # icnn:            icnn_mnist047
+    # icnn + init:     ours_mnist052
 
-    stats = retrieve_five_number_summary(result_path, "mnist???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "non-convex", color="gray", ax=ax1)
-    # stats = retrieve_five_number_summary(result_path, "convex1_mnist???.?_*", tb_tag="valid/loss")
-    # plot_five_number_summary(stats, "exp-ICNN", color=plt.cm.tab10(2), ax=ax1)
-    # stats = retrieve_five_number_summary(result_path, "convex_mnist???.?_*", tb_tag="valid/loss")
-    # plot_five_number_summary(stats, "exp-ICNN + init", color="#0084bb", ax=ax1)
-    stats = retrieve_five_number_summary(result_path, "icnn1_mnist???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "ICNN", color=plt.cm.tab10(2), ax=ax1)
-    stats = retrieve_five_number_summary(result_path, "skip_mnist???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "ICNN + skip", color=plt.cm.tab10(1), ax=ax1)
-    stats = retrieve_five_number_summary(result_path, "icnn2_mnist???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "ICNN + init", color="#0084bb", ax=ax1)
+    for key in identifiers:
+        label, col = id_plot_kwargs[key]
+        stats = retrieve_five_number_summary(result_path, f"{key}_mnist???.?_*", tb_tag="valid/loss")
+        plot_five_number_summary(stats, label, color=col, ax=ax1)
+        stats = retrieve_five_number_summary(result_path, f"{key}_mnist???.?_*", tb_tag="valid/acc")
+        plot_five_number_summary(stats, label, color=col, ax=ax2)
+
     ax1.set_ylim(None, 1.)
     ax1.set_ylabel("average loss")
     ax1.legend()
 
-    stats = retrieve_five_number_summary(result_path, "mnist???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "non-convex", color="gray", ax=ax2)
-    # stats = retrieve_five_number_summary(result_path, "convex1_mnist???.?_*", tb_tag="valid/acc")
-    # plot_five_number_summary(stats, "exp-ICNN", color=plt.cm.tab10(2), ax=ax2)
-    # stats = retrieve_five_number_summary(result_path, "convex_mnist???.?_*", tb_tag="valid/acc")
-    # plot_five_number_summary(stats, "exp-ICNN + init", color="#0084bb", ax=ax2)
-    stats = retrieve_five_number_summary(result_path, "icnn1_mnist???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "ICNN", color=plt.cm.tab10(2), ax=ax2)
-    stats = retrieve_five_number_summary(result_path, "skip_mnist???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "ICNN + skip", color=plt.cm.tab10(1), ax=ax2)
-    stats = retrieve_five_number_summary(result_path, "icnn2_mnist???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "ICNN + init", color="#0084bb", ax=ax2)
     ax2.yaxis.tick_right()
     ax2.yaxis.set_label_position("right")
     ax2.set_yscale("linear")
     ax2.set_ylim(0.9, 1.0)
     ax2.set_ylabel("accuracy")
 
-    # ax1.set_title("baseline hyper-parameters")
-    # base = retrieve_five_number_summary(result_path, "mnist071?_*")
-    # plot_five_number_summary(base, "baseline", ax=ax1)
-    # icnn = retrieve_five_number_summary(result_path, "mnist071icnn?_*")
-    # plot_five_number_summary(icnn, "ICNN", ax=ax1)
-    # conv = retrieve_five_number_summary(result_path, "mnist071convex?_*")
-    # plot_five_number_summary(conv, "convex", ax=ax1)
-    # ax1.legend()
-
-    # ax2.set_title("ICNN hyper-parameters")
-    # base = retrieve_five_number_summary(result_path, "icnn_mnist002base?_*")
-    # plot_five_number_summary(base, "baseline", ax=ax2)
-    # icnn = retrieve_five_number_summary(result_path, "icnn_mnist002?_*")
-    # plot_five_number_summary(icnn, "ICNN", ax=ax2)
-    # conv = retrieve_five_number_summary(result_path, "icnn_mnist002convex?_*")
-    # plot_five_number_summary(conv, "convex", ax=ax2)
-
-    # ax3.set_title("convex hyper-parameters")
-    # base = retrieve_five_number_summary(result_path, "convex_mnist066base?_*")
-    # plot_five_number_summary(base, "baseline", ax=ax3)
-    # icnn = retrieve_five_number_summary(result_path, "convex_mnist066icnn?_*")
-    # plot_five_number_summary(icnn, "ICNN", ax=ax3)
-    # conv = retrieve_five_number_summary(result_path, "convex_mnist066?_*")
-    # plot_five_number_summary(conv, "convex", ax=ax3)
-
     fig.tight_layout()
     return fig
 
 
-def generate_cifar_plot():
+def generate_cifar_plot(identifiers: list[str], id_plot_kwargs: dict[str, tuple]):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8.4, 4.2))
     result_path = Path("results", "mlp_search")
 
-    # non-convex:      cifar107
-    # exp-icnn:        convex1_cifar023
-    # exp-icnn + init: convex_cifar044
-    # icnn:            icnn1_cifar023 (icnn_cifar022)
-    # icnn + init:     icnn2_cifar022
+    # non-convex:      nn_cifar107
+    # exp-icnn:        exp1_cifar023
+    # exp-icnn + init: exp2_cifar044
+    # icnn:            icnn_cifar022
+    # icnn + init:     ours_cifar022
 
-    stats = retrieve_five_number_summary(result_path, "cifar???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "non-convex", color="gray", ax=ax1)
-    # stats = retrieve_five_number_summary(result_path, "convex1_cifar???.?_*", tb_tag="valid/loss")
-    # plot_five_number_summary(stats, "exp-ICNN", color=plt.cm.tab10(2), ax=ax1)
-    # stats = retrieve_five_number_summary(result_path, "convex_cifar???.?_*", tb_tag="valid/loss")
-    # plot_five_number_summary(stats, "exp-ICNN + init", color="#0084bb", ax=ax1)
-    stats = retrieve_five_number_summary(result_path, "icnn1_cifar???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "ICNN", color=plt.cm.tab10(2), ax=ax1)
-    stats = retrieve_five_number_summary(result_path, "skip_cifar???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "ICNN + skip", color=plt.cm.tab10(1), ax=ax1)
-    stats = retrieve_five_number_summary(result_path, "icnn2_cifar???.?_*", tb_tag="valid/loss")
-    plot_five_number_summary(stats, "ICNN + init", color="#0084bb", ax=ax1)
+    for key in identifiers:
+        label, col = id_plot_kwargs[key]
+        stats = retrieve_five_number_summary(result_path, f"{key}_cifar???.?_*", tb_tag="valid/loss")
+        plot_five_number_summary(stats, label, color=col, ax=ax1)
+        stats = retrieve_five_number_summary(result_path, f"{key}_cifar???.?_*", tb_tag="valid/acc")
+        plot_five_number_summary(stats, label, color=col, ax=ax2)
+
     ax1.set_ylim(None, 6.)
     ax1.set_ylabel("average loss")
     ax1.legend()
 
-    stats = retrieve_five_number_summary(result_path, "cifar???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "non-convex", color="gray", ax=ax2)
-    # stats = retrieve_five_number_summary(result_path, "convex1_cifar???.?_*", tb_tag="valid/acc")
-    # plot_five_number_summary(stats, "exp-ICNN", color=plt.cm.tab10(2), ax=ax2)
-    # stats = retrieve_five_number_summary(result_path, "convex_cifar???.?_*", tb_tag="valid/acc")
-    # plot_five_number_summary(stats, "exp-ICNN + init", color="#0084bb", ax=ax2)
-    stats = retrieve_five_number_summary(result_path, "icnn1_cifar???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "ICNN", color=plt.cm.tab10(2), ax=ax2)
-    stats = retrieve_five_number_summary(result_path, "skip_cifar???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "ICNN", color=plt.cm.tab10(1), ax=ax2)
-    stats = retrieve_five_number_summary(result_path, "icnn2_cifar???.?_*", tb_tag="valid/acc")
-    plot_five_number_summary(stats, "ICNN + init", color="#0084bb", ax=ax2)
     ax2.yaxis.tick_right()
     ax2.yaxis.set_label_position("right")
     ax2.set_yscale("linear")
     ax2.set_ylim(0.3, 0.6)
     ax2.set_ylabel("accuracy")
 
-    # ax1.set_title("baseline hyper-parameters")
-    # base = retrieve_five_number_summary(result_path, "cifar_base_rep?_*")
-    # plot_five_number_summary(base, "baseline", ax=ax1)
-    # icnn = retrieve_five_number_summary(result_path, "cifar_icnn_rep?_*")
-    # plot_five_number_summary(icnn, "ICNN", ax=ax1)
-    # conv = retrieve_five_number_summary(result_path, "cifar_conv_rep?_*")
-    # plot_five_number_summary(conv, "convex", ax=ax1)
-    # ax1.legend()
-
     fig.tight_layout()
     return fig
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("identifiers", metavar="ID", type=str, nargs="+",
+                        description="model identifiers to plot the results for")
+    args = parser.parse_args()
+
+    id_colours = {
+        "nn": ("non-convex", "gray"),
+        "icnn": ("ICNN", plt.cm.tab10(2)),
+        "skip": ("ICNN + skip", plt.cm.tab10(1)),
+        "ours": ("ICNN + init", "#0084bb"),
+        "exp1": ("exp-ICNN", plt.cm.tab10(2)),
+        "exp2": ("exp-ICNN + init", "#0084bb"),
+    }
+
+    generate_mnist_plot(args.identifiers, id_colours)
+    generate_cifar_plot(args.identifiers, id_colours)
