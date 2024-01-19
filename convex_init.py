@@ -43,22 +43,23 @@ class ConvexBiasCorrectionInitialiser:
         self.positivity = positivity
 
     def __call__(self, weight: torch.Tensor, bias: torch.Tensor):
+        if bias is None:
+            raise ValueError("Principled Initialisation for ICNNs requires bias parameter")
+
         fan_in = torch.nn.init._calculate_correct_fan(weight, "fan_in")
-        weight_dist, bias_dist = self.compute_parameters(fan_in, bias is None)
+        weight_dist, bias_dist = self.compute_parameters(fan_in)
         weight_mean_sq, weight_var = weight_dist
         # pytorch default init uses uniform distribution
         offset, dist = weight_mean_sq ** .5, (3. * weight_var) ** .5
         torch.nn.init.uniform_(weight, offset - dist, offset + dist)
-        if bias is not None:
-            bias_mean, bias_var = bias_dist
-            torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
 
-    def compute_parameters(self, fan_in: int, no_bias: bool = False) -> tuple[
+        bias_mean, bias_var = bias_dist
+        torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
+
+    def compute_parameters(self, fan_in: int) -> tuple[
         tuple[float, float], tuple[float, float] | None
     ]:
         weight_var = self.gain / fan_in
-        if no_bias:
-            return (0., weight_var), None
 
         # pytorch default init uses uniform distribution
         w_tmp = self.positivity((2. * torch.rand(10_000) - 1.) * (3. * weight_var) ** .5)
@@ -141,15 +142,18 @@ class ConvexInitialiser:
         self.relu_scale = 2. / (1. + alpha ** 2)
 
     def __call__(self, weight: torch.Tensor, bias: torch.Tensor):
+        if bias is None:
+            raise ValueError("Principled Initialisation for ICNNs requires bias parameter")
+
         fan_in = torch.nn.init._calculate_correct_fan(weight, "fan_in")
-        weight_dist, bias_dist = self.compute_parameters(fan_in, bias is None)
+        weight_dist, bias_dist = self.compute_parameters(fan_in)
         weight_mean_sq, weight_var = weight_dist
         self.init_log_normal_(weight, weight_mean_sq, weight_var)
-        if bias is not None:
-            bias_mean, bias_var = bias_dist
-            torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
 
-    def compute_parameters(self, fan_in: int, no_bias: bool = False) -> tuple[
+        bias_mean, bias_var = bias_dist
+        torch.nn.init.normal_(bias, bias_mean, bias_var ** .5)
+
+    def compute_parameters(self, fan_in: int) -> tuple[
         tuple[float, float], tuple[float, float] | None
     ]:
         """
@@ -172,8 +176,6 @@ class ConvexInitialiser:
         """
         target_mean_sq = self.target_corr / self.corr_func(fan_in)
         target_variance = self.relu_scale * (1. - self.target_corr) / fan_in
-        if no_bias:
-            return (target_mean_sq, target_variance), None
 
         shift = fan_in * (target_mean_sq * self.target_var / (2 * math.pi)) ** .5
         bias_var = 0.
