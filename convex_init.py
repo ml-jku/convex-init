@@ -163,8 +163,6 @@ class ConvexInitialiser:
         ----------
         fan_in : int
             Number of incoming connections.
-        no_bias : bool, optional
-            If `True`, computation of bias parameters is skipped.
 
         Returns
         -------
