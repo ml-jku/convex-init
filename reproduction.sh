@@ -61,6 +61,21 @@ visualise nn icnn skip ours;  # FIGURE 3
 visualise nn exp1 exp2;  # FIGURE 11
 
 
+# TOX21 experiments
+alias train="python -m tox21.train --config tox21/default.yaml"
+alias evaluate="ptyhon -m tox21.evaluate "
+
+train model.name=fc
+train model.name=icnn
+train model.name=icnn model.bad_init=true
+train model.name=icnn model.skip=true
+
+# collect numbers for TABLE 1
+for TIMESTAMP in results/tox21/*.0; do
+  evaluate "$( basename ${TIMESTAMP%.0} )" >> table.txt;
+done;
+
+
 # visualisation of distributions
 python visualise_sigprop.py  # histograms and correlation matrices for FIGURE 1 and FIGURE 4
 # NOTE: the finished SVG files can be found in the project directory (propagation_diff*.svg)

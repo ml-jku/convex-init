@@ -100,7 +100,7 @@ def get_model(name: str, num_hidden: int = 128, bad_init: bool = False, skip: bo
         ConvexLinear(num_hidden, num_out, positivity=positivity),
     )
 
-    init = TraditionalInitialiser(gain=2.) if bad_init else ConvexInitialiser()
+    init = TraditionalInitialiser(gain=2.) if name == "fc" or bad_init else ConvexInitialiser()
     for idx in [4, 7]:
         init(model[idx].weight, model[idx].bias)
 
