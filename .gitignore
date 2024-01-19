@@ -1,6 +1,7 @@
 .idea
 results
 runs
+options
 *.png
 *.pdf
 *.npz
