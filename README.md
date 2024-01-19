@@ -8,6 +8,24 @@ Moreover, it makes it possible to train ICNNs without skip-connections (cf. [Mar
 
 On top of the initialisation itself, code for the different experiments and figures in the paper can be found here.
 
+### Structure
+
+The top-level directory (in which this file resides) contains different kinds of files.
+Our initialisation (`ConvexInitialiser`) is implemented as a standalone class in `convex_init.py`.
+Implementations for a set of building blocks for ICNNs can be found in `convex_modules.py`.
+The code for training a model and logging results has been collected in `trainer.py`.
+Apart from some exceptions, most of the other files are scripts with initial attempts to get things to work.
+These scripts should be directly runnable using a command like `python train_cifar.py`.
+
+The code for the experiments in the paper is located in different directories / modules.
+The `init_learnability` module focuses on training simple networks.
+Experiments on the generalisation properties of the networks is provided in the `mlp_search` module.
+Finally, the `tox21` module contains the code for experiments on Tox21.
+The code for each of these modules is best called using `python -m init_learnability.train`.
+For a full overview of the reproduction commands with arguments, we refer to the BASH script `reproduction.sh`.
+
+Code is supposed to be run in an environment with the package versions in `requirements.txt` using python 3.9 or 3.10.
+
 ## Paper
 
 [NeurIPS](https://neurips.cc/virtual/2023/poster/70408)
